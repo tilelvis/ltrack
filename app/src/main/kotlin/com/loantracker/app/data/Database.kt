@@ -47,4 +47,7 @@ class LoanRepository(private val db: AppDatabase) {
     suspend fun addPayment(payment: Payment) = db.paymentDao().insert(payment)
     suspend fun deletePayment(payment: Payment) = db.paymentDao().delete(payment)
     suspend fun findByCode(code: String): Payment? = db.paymentDao().findByCode(code)
+    suspend fun getLoan(id: String): Loan? = db.loanDao().getById(id)
+    suspend fun totalPaidOnce(loanId: String): Double = db.paymentDao().sumForLoan(loanId)
+    suspend fun countCompleted(): Int = db.loanDao().countCompleted()
 }

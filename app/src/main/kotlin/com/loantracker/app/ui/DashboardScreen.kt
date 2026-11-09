@@ -7,6 +7,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.LocalFireDepartment
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -39,7 +40,17 @@ fun DashboardScreen(
     val loans by vm.loans.collectAsStateWithLifecycle()
     val allPayments by vm.allPayments.collectAsStateWithLifecycle()
 
-    val hero = loans.firstOrNull()
+    // Only unpaid (active) loans take precedence; repaid loans move to their own section.
+    val paidByLoan = remember(allPayments) { allPayments.sumsByLoan() }
+    val lastPaidOn = remember(allPayments) { allPayments.lastPaidDateByLoan() }
+    val activeLoans = remember(loans, paidByLoan) {
+        loans.filter { !it.isRepaid(paidByLoan[it.id] ?: 0.0) }
+    }
+    val completedLoans = remember(loans, paidByLoan) {
+        loans.filter { it.isRepaid(paidByLoan[it.id] ?: 0.0) }
+    }
+
+    val hero = activeLoans.firstOrNull()
     val heroPaid = if (hero != null) {
         vm.totalPaid(hero.id).collectAsStateWithLifecycle().value
     } else 0.0
@@ -101,31 +112,170 @@ fun DashboardScreen(
                         onClick = { onOpenLoan(hero.id) }
                     )
                 }
+                item {
+                    StreakCard(currentStreak = currentStreak, bestStreak = bestStreak)
+                }
+            } else {
+                item {
+                    AllClearCard(completedCount = completedLoans.size, onAddLoan = onAddLoan)
+                }
             }
 
-            item {
-                StreakCard(currentStreak = currentStreak, bestStreak = bestStreak)
-            }
-
-            val others = loans.drop(1)
+            val others = activeLoans.drop(1)
             if (others.isNotEmpty()) {
                 item {
                     Text(
-                        "Other loans",
+                        "Other active loans",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.SemiBold,
                         modifier = Modifier.padding(top = 8.dp, bottom = 4.dp)
                     )
                 }
                 items(others, key = { it.id }) { loan ->
-                    val paid by vm.totalPaid(loan.id).collectAsStateWithLifecycle()
                     CompactLoanCard(
                         loan = loan,
-                        totalPaid = paid,
+                        totalPaid = paidByLoan[loan.id] ?: 0.0,
                         onClick = { onOpenLoan(loan.id) }
                     )
                 }
             }
+
+            if (completedLoans.isNotEmpty()) {
+                item {
+                    Text(
+                        "Completed",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.padding(top = 8.dp, bottom = 4.dp)
+                    )
+                }
+                item {
+                    WinsCard(
+                        count = completedLoans.size,
+                        totalRepaid = completedLoans.sumOf { paidByLoan[it.id] ?: 0.0 }
+                    )
+                }
+                items(completedLoans.take(3), key = { "done_" + it.id }) { loan ->
+                    CompletedLoanRow(
+                        loan = loan,
+                        note = repaymentNote(loan.dueDate, lastPaidOn[loan.id]),
+                        onClick = { onOpenLoan(loan.id) }
+                    )
+                }
+                if (completedLoans.size > 3) {
+                    item {
+                        Text(
+                            "+${completedLoans.size - 3} more in History",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(start = 4.dp)
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun AllClearCard(completedCount: Int, onAddLoan: () -> Unit) {
+    val tone = toneColors(Tone.SUCCESS)
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
+    ) {
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Icon(
+                Icons.Filled.EmojiEvents,
+                contentDescription = null,
+                tint = tone.fg,
+                modifier = Modifier.size(48.dp)
+            )
+            Spacer(Modifier.height(8.dp))
+            Text(
+                "You're all clear",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onPrimaryContainer
+            )
+            Text(
+                "No active loans. $completedCount ${if (completedCount == 1) "loan" else "loans"} cleared.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onPrimaryContainer
+            )
+            Spacer(Modifier.height(12.dp))
+            FilledTonalButton(onClick = onAddLoan) { Text("Add a loan") }
+        }
+    }
+}
+
+@Composable
+private fun WinsCard(count: Int, totalRepaid: Double) {
+    val tone = toneColors(Tone.SUCCESS)
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = tone.bg)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                Icons.Filled.EmojiEvents,
+                contentDescription = null,
+                tint = tone.fg,
+                modifier = Modifier.size(32.dp)
+            )
+            Spacer(Modifier.width(12.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    "$count ${if (count == 1) "loan" else "loans"} cleared",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = tone.fg
+                )
+                Text(
+                    "${formatMoney(totalRepaid)} repaid in total",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun CompletedLoanRow(loan: Loan, note: String, onClick: () -> Unit) {
+    Card(
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
+        shape = RoundedCornerShape(14.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(14.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    loan.title,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Spacer(Modifier.height(2.dp))
+                RepaidNote(note)
+            }
+            Text(
+                formatMoney(loan.totalPayable),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
     }
 }

@@ -29,6 +29,13 @@ interface LoanDao {
 
     @Query("UPDATE loans SET isHidden = :hidden WHERE id = :id")
     suspend fun setHidden(id: String, hidden: Boolean)
+
+    @Query(
+        "SELECT COUNT(*) FROM loans WHERE principal > 0 AND " +
+        "(SELECT COALESCE(SUM(amount), 0) FROM payments WHERE payments.loanId = loans.id) + 0.5 >= " +
+        "(principal + CASE WHEN interestRate > 0 THEN principal * interestRate / 100.0 ELSE 0 END)"
+    )
+    suspend fun countCompleted(): Int
 }
 
 @Dao
@@ -44,6 +51,9 @@ interface PaymentDao {
 
     @Query("SELECT COALESCE(SUM(amount), 0) FROM payments")
     fun observeTotalPaidAll(): Flow<Double>
+
+    @Query("SELECT COALESCE(SUM(amount), 0) FROM payments WHERE loanId = :loanId")
+    suspend fun sumForLoan(loanId: String): Double
 
     @Query("SELECT * FROM payments WHERE mpesaCode = :code LIMIT 1")
     suspend fun findByCode(code: String): Payment?

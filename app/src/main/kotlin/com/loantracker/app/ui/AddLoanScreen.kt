@@ -64,6 +64,10 @@ fun AddLoanScreen(vm: LoanViewModel, onBack: () -> Unit) {
     var notes by rememberSaveable { mutableStateOf("") }
     var showMore by rememberSaveable { mutableStateOf(false) }
     var showStartPicker by rememberSaveable { mutableStateOf(false) }
+    var repaidTouched by rememberSaveable { mutableStateOf(false) }
+    var repaidChoice by rememberSaveable { mutableStateOf(false) }
+    var repaidEpoch by rememberSaveable { mutableStateOf(0L) }  // 0 = default date
+    var showRepaidPicker by rememberSaveable { mutableStateOf(false) }
     var lenderMenuOpen by remember { mutableStateOf(false) }
 
     // A loan is always one month: only the start date is chosen.
@@ -71,6 +75,20 @@ fun AddLoanScreen(vm: LoanViewModel, onBack: () -> Unit) {
     val startDate = LocalDate.ofEpochDay(startEpoch)
     val dueDate = startDate.plusMonths(1)
     val durationDays = ChronoUnit.DAYS.between(startDate, dueDate) + 1
+
+    // Past loans: if the month is already over, assume it was repaid (the user can switch it off).
+    val isPast = startDate.isBefore(today)
+    val hasEnded = dueDate.isBefore(today)
+    val markRepaid = isPast && (if (repaidTouched) repaidChoice else hasEnded)
+    val repaidDefault = if (hasEnded) dueDate else today
+    val repaidDate = if (repaidEpoch == 0L) repaidDefault
+        else LocalDate.ofEpochDay(repaidEpoch).let {
+            when {
+                it.isBefore(startDate) -> startDate
+                it.isAfter(today) -> today
+                else -> it
+            }
+        }
 
     val interestAmount = amount * rate / 100.0
     val totalPayable = amount + interestAmount
@@ -109,7 +127,7 @@ fun AddLoanScreen(vm: LoanViewModel, onBack: () -> Unit) {
             lenderEmail = lenderEmail.trim().ifBlank { null },
             notes = notes.trim().ifBlank { null }
         )
-        vm.saveLoan(loan)
+        if (markRepaid) vm.saveLoanRepaid(loan, repaidDate) else vm.saveLoan(loan)
         onBack()
     }
 
@@ -138,7 +156,7 @@ fun AddLoanScreen(vm: LoanViewModel, onBack: () -> Unit) {
                         .padding(horizontal = 16.dp, vertical = 12.dp)
                         .height(52.dp)
                 ) {
-                    Text("Save loan", fontWeight = FontWeight.SemiBold)
+                    Text(if (markRepaid) "Save as repaid" else "Save loan", fontWeight = FontWeight.SemiBold)
                 }
             }
         }
@@ -276,6 +294,67 @@ fun AddLoanScreen(vm: LoanViewModel, onBack: () -> Unit) {
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
+            }
+
+            // ---- Past loan: record that it was already repaid
+            if (isPast) {
+                FormSection("Past loan") {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                "Already fully repaid",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                            Text(
+                                if (markRepaid) "Saved as completed and added to your history."
+                                else if (hasEnded) "Kept as an overdue loan until you record payments."
+                                else "Stays active so you can record payments.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Spacer(Modifier.width(12.dp))
+                        Switch(
+                            checked = markRepaid,
+                            onCheckedChange = { repaidTouched = true; repaidChoice = it }
+                        )
+                    }
+                    if (markRepaid) {
+                        Text(
+                            "Repaid on",
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Row(
+                            modifier = Modifier.horizontalScroll(rememberScrollState()),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            FilterChip(
+                                selected = repaidEpoch == 0L,
+                                onClick = { repaidEpoch = 0L },
+                                label = { Text(repaidDefault.format(DISPLAY_FMT)) }
+                            )
+                            FilterChip(
+                                selected = repaidEpoch != 0L,
+                                onClick = { showRepaidPicker = true },
+                                label = {
+                                    Text(
+                                        if (repaidEpoch != 0L) repaidDate.format(DISPLAY_FMT)
+                                        else "Pick date"
+                                    )
+                                },
+                                leadingIcon = {
+                                    Icon(
+                                        Icons.Filled.CalendarMonth,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                }
+                            )
+                        }
+                    }
+                }
             }
 
             // ---- Summary
@@ -426,6 +505,13 @@ fun AddLoanScreen(vm: LoanViewModel, onBack: () -> Unit) {
         }
     }
 
+    if (showRepaidPicker) {
+        DatePickerModal(
+            initialDate = repaidDate,
+            onConfirm = { repaidEpoch = it.toEpochDay(); showRepaidPicker = false },
+            onDismiss = { showRepaidPicker = false }
+        )
+    }
     if (showStartPicker) {
         DatePickerModal(
             initialDate = startDate,

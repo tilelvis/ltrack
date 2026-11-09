@@ -49,6 +49,13 @@ import com.loantracker.app.data.PaymentInterval
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
+private data class LoanGroups(
+    val overdue: List<Loan>,
+    val active: List<Loan>,
+    val completed: List<Loan>,
+    val hidden: List<Loan>
+)
+
 private val DATE_FMT: DateTimeFormatter = DateTimeFormatter.ofPattern("dd MMM yyyy")
 
 private fun formatMoneyHistory(amount: Double): String = "KSh %,.0f".format(amount)
@@ -71,13 +78,22 @@ fun LoanHistoryScreen(
 
     val today = remember { LocalDate.now() }
 
-    // Group loans once per allLoans change.
-    val (overdueLoans, activeLoans, hiddenLoans) = remember(allLoans, today) {
-        val overdue = allLoans.filter { !it.isHidden && today.isAfter(it.dueDate) }
-        val active = allLoans.filter { !it.isHidden && !today.isAfter(it.dueDate) }
-        val hidden = allLoans.filter { it.isHidden }
-        Triple(overdue, active, hidden)
+    val repaidOn = remember(allPayments) { allPayments.lastPaidDateByLoan() }
+
+    // Group loans once per loans/payments change.
+    val groups = remember(allLoans, paidByLoan, today) {
+        fun repaid(l: Loan) = l.isRepaid(paidByLoan[l.id] ?: 0.0)
+        LoanGroups(
+            overdue = allLoans.filter { !it.isHidden && !repaid(it) && today.isAfter(it.dueDate) },
+            active = allLoans.filter { !it.isHidden && !repaid(it) && !today.isAfter(it.dueDate) },
+            completed = allLoans.filter { !it.isHidden && repaid(it) },
+            hidden = allLoans.filter { it.isHidden }
+        )
     }
+    val overdueLoans = groups.overdue
+    val activeLoans = groups.active
+    val completedLoans = groups.completed
+    val hiddenLoans = groups.hidden
 
     Scaffold(
         contentWindowInsets = WindowInsets.statusBars,
@@ -136,12 +152,6 @@ fun LoanHistoryScreen(
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     SummaryCard(
-                        label = "Total",
-                        count = allLoans.size,
-                        tone = Tone.NEUTRAL,
-                        modifier = Modifier.weight(1f)
-                    )
-                    SummaryCard(
                         label = "Active",
                         count = activeLoans.size,
                         tone = Tone.SUCCESS,
@@ -151,6 +161,12 @@ fun LoanHistoryScreen(
                         label = "Overdue",
                         count = overdueLoans.size,
                         tone = Tone.DANGER,
+                        modifier = Modifier.weight(1f)
+                    )
+                    SummaryCard(
+                        label = "Repaid",
+                        count = completedLoans.size,
+                        tone = Tone.CAUTION,
                         modifier = Modifier.weight(1f)
                     )
                     SummaryCard(
@@ -185,6 +201,22 @@ fun LoanHistoryScreen(
                         loan = loan,
                         totalPaid = paidByLoan[loan.id] ?: 0.0,
                         today = today,
+                        onClick = { onOpenLoan(loan.id) }
+                    )
+                }
+            }
+
+            if (completedLoans.isNotEmpty()) {
+                stickyHeader(key = "header_completed", contentType = "header") {
+                    SectionHeader("Completed", completedLoans.size)
+                }
+                items(completedLoans, key = { it.id }, contentType = { "loanCard" }) { loan ->
+                    HistoryLoanCard(
+                        loan = loan,
+                        totalPaid = paidByLoan[loan.id] ?: 0.0,
+                        today = today,
+                        repaid = true,
+                        repaidOn = repaidOn[loan.id],
                         onClick = { onOpenLoan(loan.id) }
                     )
                 }
@@ -268,17 +300,21 @@ private fun HistoryLoanCard(
     loan: Loan,
     totalPaid: Double,
     today: LocalDate,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    repaid: Boolean = false,
+    repaidOn: LocalDate? = null
 ) {
-    val isOverdue = !loan.isHidden && today.isAfter(loan.dueDate)
+    val isOverdue = !loan.isHidden && !repaid && today.isAfter(loan.dueDate)
     val statusText = when {
         loan.isHidden -> "Hidden"
+        repaid -> "Repaid"
         isOverdue -> "Overdue"
         else -> "Active"
     }
     val statusTone = toneColors(
         when {
             loan.isHidden -> Tone.NEUTRAL
+            repaid -> Tone.SUCCESS
             isOverdue -> Tone.DANGER
             else -> Tone.SUCCESS
         }
@@ -377,9 +413,11 @@ private fun HistoryLoanCard(
                 trackColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f)
             )
 
-            // Row 5: percent + due date
+            // Row 5: percent + due date (or how the loan was cleared)
             Spacer(Modifier.height(6.dp))
-            Row(modifier = Modifier.fillMaxWidth()) {
+            if (repaid) {
+                RepaidNote(repaymentNote(loan.dueDate, repaidOn))
+            } else Row(modifier = Modifier.fillMaxWidth()) {
                 Text(
                     "$percent% paid",
                     style = MaterialTheme.typography.bodySmall,

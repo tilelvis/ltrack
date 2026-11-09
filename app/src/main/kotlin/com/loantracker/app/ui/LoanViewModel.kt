@@ -10,11 +10,15 @@ import com.loantracker.app.data.DailyPaymentRecommendation
 import com.loantracker.app.data.Loan
 import com.loantracker.app.data.LoanRepository
 import com.loantracker.app.data.Payment
+import com.loantracker.app.data.PaymentSource
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import java.time.LocalDate
+import java.time.temporal.ChronoUnit
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 
@@ -69,7 +73,50 @@ class LoanViewModel(private val repo: LoanRepository) : ViewModel() {
     fun saveLoan(loan: Loan) = viewModelScope.launch { repo.upsertLoan(loan) }
     fun deleteLoan(loan: Loan) = viewModelScope.launch { repo.deleteLoan(loan) }
     fun hideLoan(id: String, hidden: Boolean) = viewModelScope.launch { repo.setLoanHidden(id, hidden) }
-    fun addPayment(payment: Payment) = viewModelScope.launch { repo.addPayment(payment) }
+    fun addPayment(payment: Payment) = viewModelScope.launch {
+        val loan = repo.getLoan(payment.loanId)
+        val before = repo.totalPaidOnce(payment.loanId)
+        repo.addPayment(payment)
+        // Celebrate only the payment that actually completes the loan.
+        if (loan != null && !loan.isRepaid(before) && loan.isRepaid(before + payment.amount)) {
+            announceCompletion(loan, payment.paidAt.toLocalDate(), past = false)
+        }
+    }
+
+    /** Save a past loan that was already fully repaid: records one payment for the full amount. */
+    fun saveLoanRepaid(loan: Loan, repaidOn: LocalDate) = viewModelScope.launch {
+        repo.upsertLoan(loan)
+        repo.addPayment(
+            Payment(
+                id = newId(),
+                loanId = loan.id,
+                amount = loan.totalPayable,
+                paidAt = repaidOn.atTime(12, 0),
+                source = PaymentSource.MANUAL,
+                notes = "Past loan, marked as fully repaid"
+            )
+        )
+        announceCompletion(loan, repaidOn, past = true)
+    }
+
+    private val _celebration = MutableStateFlow<Celebration?>(null)
+    val celebration: StateFlow<Celebration?> = _celebration
+
+    fun dismissCelebration() { _celebration.value = null }
+
+    private suspend fun announceCompletion(loan: Loan, repaidOn: LocalDate, past: Boolean) {
+        val count = repo.countCompleted()
+        val taken = (ChronoUnit.DAYS.between(loan.startDate, repaidOn) + 1).coerceAtLeast(1L)
+        val early = ChronoUnit.DAYS.between(repaidOn, loan.dueDate)
+        _celebration.value = Celebration(
+            loanTitle = loan.title,
+            totalRepaid = loan.totalPayable,
+            daysTaken = taken,
+            daysEarly = early,
+            completedCount = count,
+            pastLoan = past
+        )
+    }
     fun deletePayment(payment: Payment) = viewModelScope.launch { repo.deletePayment(payment) }
 
     suspend fun isCodeImported(code: String): Boolean = repo.findByCode(code.uppercase()) != null

@@ -30,6 +30,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.NavHost
@@ -41,6 +42,7 @@ import com.loantracker.app.services.ThemeMode
 import com.loantracker.app.services.ThemeService
 import com.loantracker.app.ui.AddLoanScreen
 import com.loantracker.app.ui.AddPaymentScreen
+import com.loantracker.app.ui.CelebrationDialog
 import com.loantracker.app.ui.DashboardScreen
 import com.loantracker.app.ui.LoanDetailScreen
 import com.loantracker.app.ui.LoanHistoryScreen
@@ -105,6 +107,9 @@ private fun AppNav() {
     val nav = rememberNavController()
     val context = LocalContext.current
     val vm: LoanViewModel = viewModel(factory = LoanViewModel.factory(context))
+
+    val celebration by vm.celebration.collectAsStateWithLifecycle()
+    celebration?.let { CelebrationDialog(it) { vm.dismissCelebration() } }
 
     val navItems = listOf(
         NavItem("dashboard", "Dashboard", { Icon(Icons.Filled.Dashboard, contentDescription = null) }),
