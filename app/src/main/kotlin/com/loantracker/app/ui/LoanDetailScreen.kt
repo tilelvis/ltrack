@@ -38,14 +38,6 @@ private val DATETIME_FMT: DateTimeFormatter = DateTimeFormatter.ofPattern("dd MM
 
 fun formatMoneyDetail(amount: Double): String = "KSh %,.0f".format(amount)
 
-private fun severityColor(severity: Severity): Color = when (severity) {
-    Severity.PAID -> Color(0xFF16A34A)
-    Severity.NORMAL -> Color(0xFF047857)
-    Severity.MODERATE -> Color(0xFFCA8A04)
-    Severity.ELEVATED -> Color(0xFFEA580C)
-    Severity.CRITICAL -> Color(0xFFDC2626)
-}
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LoanDetailScreen(
@@ -68,6 +60,7 @@ fun LoanDetailScreen(
     Scaffold(
         topBar = {
             TopAppBar(
+                colors = appBarColors(),
                 title = { Text(loan?.title ?: "Loan") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
@@ -261,7 +254,7 @@ private fun HeroDetailCard(
                     color = MaterialTheme.colorScheme.onPrimaryContainer
                 )
                 Text(
-                    "$percent% • ${if (days <= 0) "Overdue" else "$days days left"}",
+                    "$percent% • ${daysLeftText(days)}",
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.SemiBold,
                     color = if (days <= 0) MaterialTheme.colorScheme.error
@@ -284,7 +277,7 @@ private fun DetailRecommendationCard(rec: com.loantracker.app.data.DailyPaymentR
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = color.copy(alpha = 0.12f))
+        colors = CardDefaults.cardColors(containerColor = severityContainer(rec.severity))
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(

@@ -82,7 +82,7 @@ fun LoanHistoryScreen(
     Scaffold(
         contentWindowInsets = WindowInsets.statusBars,
         topBar = {
-            TopAppBar(title = { Text("Loan History") })
+            TopAppBar(title = { Text("Loan History") }, colors = appBarColors())
         }
     ) { padding ->
         if (allLoans.isEmpty()) {
@@ -138,25 +138,25 @@ fun LoanHistoryScreen(
                     SummaryCard(
                         label = "Total",
                         count = allLoans.size,
-                        color = MaterialTheme.colorScheme.primary,
+                        tone = Tone.NEUTRAL,
                         modifier = Modifier.weight(1f)
                     )
                     SummaryCard(
                         label = "Active",
                         count = activeLoans.size,
-                        color = MaterialTheme.colorScheme.primary,
+                        tone = Tone.SUCCESS,
                         modifier = Modifier.weight(1f)
                     )
                     SummaryCard(
                         label = "Overdue",
                         count = overdueLoans.size,
-                        color = MaterialTheme.colorScheme.error,
+                        tone = Tone.DANGER,
                         modifier = Modifier.weight(1f)
                     )
                     SummaryCard(
                         label = "Hidden",
                         count = hiddenLoans.size,
-                        color = MaterialTheme.colorScheme.outline,
+                        tone = Tone.NEUTRAL,
                         modifier = Modifier.weight(1f)
                     )
                 }
@@ -211,7 +211,7 @@ fun LoanHistoryScreen(
 private fun SectionHeader(title: String, count: Int) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
-        color = MaterialTheme.colorScheme.surface
+        color = MaterialTheme.colorScheme.background
     ) {
         Text(
             "$title ($count)",
@@ -227,15 +227,15 @@ private fun SectionHeader(title: String, count: Int) {
 private fun SummaryCard(
     label: String,
     count: Int,
-    color: androidx.compose.ui.graphics.Color,
+    tone: Tone,
     modifier: Modifier = Modifier
 ) {
+    val tc = toneColors(tone)
+    val color = tc.fg
     Card(
         modifier = modifier,
         shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = color.copy(alpha = 0.12f)
-        )
+        colors = CardDefaults.cardColors(containerColor = tc.bg)
     ) {
         Column(
             modifier = Modifier
@@ -276,11 +276,13 @@ private fun HistoryLoanCard(
         isOverdue -> "Overdue"
         else -> "Active"
     }
-    val statusColor = when {
-        loan.isHidden -> MaterialTheme.colorScheme.outline
-        isOverdue -> MaterialTheme.colorScheme.error
-        else -> MaterialTheme.colorScheme.primary
-    }
+    val statusTone = toneColors(
+        when {
+            loan.isHidden -> Tone.NEUTRAL
+            isOverdue -> Tone.DANGER
+            else -> Tone.SUCCESS
+        }
+    )
 
     val progress = if (loan.totalPayable > 0) {
         (totalPaid / loan.totalPayable).coerceIn(0.0, 1.0).toFloat()
@@ -317,8 +319,8 @@ private fun HistoryLoanCard(
                 Spacer(Modifier.size(8.dp))
                 Surface(
                     shape = RoundedCornerShape(50),
-                    color = statusColor.copy(alpha = 0.15f),
-                    contentColor = statusColor
+                    color = statusTone.bg,
+                    contentColor = statusTone.fg
                 ) {
                     Text(
                         statusText,
@@ -330,7 +332,9 @@ private fun HistoryLoanCard(
             }
 
             // Row 2: lender name
-            loan.lenderName?.let {
+            loan.lenderName
+                ?.takeIf { it.isNotBlank() && !it.equals(loan.title, ignoreCase = true) }
+                ?.let {
                 Spacer(Modifier.height(4.dp))
                 Text(
                     it,

@@ -73,6 +73,7 @@ fun SmsScanScreen(
     Scaffold(
         topBar = {
             TopAppBar(
+                colors = appBarColors(),
                 title = { Text("Scan SMS") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {

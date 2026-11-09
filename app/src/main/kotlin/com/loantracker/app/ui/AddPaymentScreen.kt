@@ -40,6 +40,7 @@ fun AddPaymentScreen(
     Scaffold(
         topBar = {
             TopAppBar(
+                colors = appBarColors(),
                 title = { Text("Add Payment") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {

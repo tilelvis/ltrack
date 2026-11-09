@@ -29,14 +29,6 @@ private val DATE_FMT: DateTimeFormatter = DateTimeFormatter.ofPattern("dd MMM yy
 
 fun formatMoney(amount: Double): String = "KSh %,.0f".format(amount)
 
-private fun severityColor(severity: Severity): Color = when (severity) {
-    Severity.PAID -> Color(0xFF16A34A)
-    Severity.NORMAL -> Color(0xFF047857)
-    Severity.MODERATE -> Color(0xFFCA8A04)
-    Severity.ELEVATED -> Color(0xFFEA580C)
-    Severity.CRITICAL -> Color(0xFFDC2626)
-}
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DashboardScreen(
@@ -59,7 +51,7 @@ fun DashboardScreen(
     Scaffold(
         contentWindowInsets = WindowInsets.statusBars,
         topBar = {
-            TopAppBar(title = { Text("Loan Tracker") })
+            TopAppBar(title = { Text("Loan Tracker") }, colors = appBarColors())
         },
         floatingActionButton = {
             FloatingActionButton(onClick = onAddLoan) {
@@ -198,7 +190,7 @@ private fun HeroLoanCard(
                     color = MaterialTheme.colorScheme.onPrimaryContainer
                 )
                 Text(
-                    if (days <= 0) "Overdue" else "$days days left",
+                    daysLeftText(days),
                     style = MaterialTheme.typography.bodyMedium,
                     color = if (days <= 0) MaterialTheme.colorScheme.error
                             else MaterialTheme.colorScheme.onPrimaryContainer
@@ -220,7 +212,7 @@ private fun RecommendationCard(rec: DailyPaymentRecommendation) {
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
-            containerColor = color.copy(alpha = 0.12f)
+            containerColor = severityContainer(rec.severity)
         )
     ) {
         Row(
@@ -266,7 +258,7 @@ private fun StreakCard(currentStreak: Int, bestStreak: Int) {
             Icon(
                 Icons.Filled.LocalFireDepartment,
                 contentDescription = null,
-                tint = Color(0xFFEA580C),
+                tint = toneColors(Tone.ELEVATED).fg,
                 modifier = Modifier.size(32.dp)
             )
             Spacer(Modifier.width(12.dp))
@@ -278,7 +270,7 @@ private fun StreakCard(currentStreak: Int, bestStreak: Int) {
                 )
                 if (bestStreak > 0) {
                     Text(
-                        "Best: $bestStreak days",
+                        "Best: $bestStreak ${if (bestStreak == 1) "day" else "days"}",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -327,7 +319,7 @@ private fun CompactLoanCard(
                 )
             }
             Text(
-                if (days <= 0) "Overdue" else "$days days left",
+                daysLeftText(days),
                 style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.SemiBold,
                 color = if (days <= 0) MaterialTheme.colorScheme.error

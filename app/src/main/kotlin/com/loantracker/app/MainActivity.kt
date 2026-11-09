@@ -45,6 +45,7 @@ import com.loantracker.app.ui.DashboardScreen
 import com.loantracker.app.ui.LoanDetailScreen
 import com.loantracker.app.ui.LoanHistoryScreen
 import com.loantracker.app.ui.LoanViewModel
+import com.loantracker.app.ui.loanTrackerColorScheme
 import com.loantracker.app.ui.MpesaImportScreen
 import com.loantracker.app.ui.SettingsScreen
 import com.loantracker.app.ui.SmsScanScreen
@@ -87,19 +88,7 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 private fun LoanTrackerTheme(dark: Boolean, content: @Composable () -> Unit) {
-    val colors = if (dark) darkColorScheme(
-        primary = Color(0xFF34D399),
-        primaryContainer = Color(0xFF065F46),
-        background = Color(0xFF0F1511),
-        surface = Color(0xFF1A2420),
-        surfaceVariant = Color(0xFF243029)
-    ) else lightColorScheme(
-        primary = Color(0xFF047857),
-        primaryContainer = Color(0xFFA7F3D0),
-        background = Color(0xFFFBFDFA),
-        surface = Color(0xFFFFFFFF),
-        surfaceVariant = Color(0xFFF0F5F2)
-    )
+    val colors = loanTrackerColorScheme(dark)
     MaterialTheme(colorScheme = colors) {
         Surface(color = MaterialTheme.colorScheme.background) { content() }
     }

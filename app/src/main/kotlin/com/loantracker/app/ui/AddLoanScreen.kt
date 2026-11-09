@@ -42,6 +42,7 @@ fun AddLoanScreen(vm: LoanViewModel, onBack: () -> Unit) {
     Scaffold(
         topBar = {
             TopAppBar(
+                colors = appBarColors(),
                 title = { Text("New loan") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {

@@ -39,6 +39,7 @@ fun MpesaImportScreen(
     Scaffold(
         topBar = {
             TopAppBar(
+                colors = appBarColors(),
                 title = { Text("Paste M-Pesa") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
@@ -123,8 +124,7 @@ fun MpesaImportScreen(
                 if (!accountMatches) {
                     WarningCard(
                         text = "Account ${p.account ?: "?"} doesn't match this loan's account (${l.keyword ?: "(none)"}).",
-                        color = Color(0xFFDC2626),
-                        bgColor = Color(0xFFFEE2E2)
+                        tone = Tone.DANGER
                     )
                 }
 
@@ -134,16 +134,14 @@ fun MpesaImportScreen(
                             "outside this loan's period " +
                             "(${l.startDate.format(DATE_FMT)} to ${l.dueDate.format(DATE_FMT)}). " +
                             "It may belong to another loan.",
-                        color = Color(0xFFB45309),
-                        bgColor = Color(0xFFFEF3C7)
+                        tone = Tone.CAUTION
                     )
                 }
 
                 if (accountMatches && dateInRange) {
                     WarningCard(
                         text = "Valid payment for this loan.",
-                        color = Color(0xFF16A34A),
-                        bgColor = Color(0xFFDCFCE7)
+                        tone = Tone.SUCCESS
                     )
                     Button(
                         onClick = {
@@ -230,13 +228,14 @@ private fun PreviewRow(label: String, value: String) {
 @Composable
 private fun WarningCard(
     text: String,
-    color: Color,
-    bgColor: Color
+    tone: Tone
 ) {
+    val tc = toneColors(tone)
+    val color = tc.fg
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = bgColor)
+        colors = CardDefaults.cardColors(containerColor = tc.bg)
     ) {
         Text(
             text,
