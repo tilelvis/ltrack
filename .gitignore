@@ -1,0 +1,22 @@
+# Build outputs
+build/
+.gradle/
+local.properties
+*.apk
+*.aab
+
+# Android signing credentials — NEVER commit.
+# Restored at build time from GitHub Secrets by .github/workflows/build.yml.
+key.properties
+keystore/
+*.keystore
+*.jks
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# OS
+.DS_Store
+Thumbs.db

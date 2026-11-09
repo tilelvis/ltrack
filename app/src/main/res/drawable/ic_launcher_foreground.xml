@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Account-balance glyph in white, centered for adaptive icon (108x108dp, 72dp safe zone). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <group android:scaleX="0.42" android:scaleY="0.42"
+           android:translateX="31.32" android:translateY="31.32">
+        <path android:fillColor="#FFFFFF"
+            android:pathData="M54,16 L96,36 L96,44 L12,44 L12,36 Z"/>
+        <path android:fillColor="#FFFFFF"
+            android:pathData="M20,50 L28,50 L28,78 L20,78 z"/>
+        <path android:fillColor="#FFFFFF"
+            android:pathData="M40,50 L48,50 L48,78 L40,78 z"/>
+        <path android:fillColor="#FFFFFF"
+            android:pathData="M60,50 L68,50 L68,78 L60,78 z"/>
+        <path android:fillColor="#FFFFFF"
+            android:pathData="M80,50 L88,50 L88,78 L80,78 z"/>
+        <path android:fillColor="#FFFFFF"
+            android:pathData="M12,84 L96,84 L96,92 L12,92 z"/>
+    </group>
+</vector>

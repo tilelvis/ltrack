@@ -1,0 +1,188 @@
+name: Build APK
+
+# ============================================================================
+# Signing: credentials come from GitHub Secrets (NOT committed).
+# Required secrets (set in repo Settings → Secrets and variables → Actions):
+#   ANDROID_KEYSTORE_BASE64  — base64 of the .jks keystore file
+#   KEYSTORE_PASSWORD        — keystore password
+#   KEY_ALIAS                — key alias (e.g. "loantracker")
+#   KEY_PASSWORD             — key password
+# If the secrets are absent (e.g. a fork without them), the build falls back
+# to the debug signing config — the APK still builds, just debug-signed.
+# ============================================================================
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      build_type:
+        description: "Build type"
+        required: true
+        type: choice
+        options: [release, debug, both]
+        default: both
+
+permissions:
+  contents: write
+
+concurrency:
+  group: build-apk-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Java 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      # ------------------------------------------------------------------
+      # chmod +x gradlew — CRITICAL. Git strips the executable bit when
+      # the repo is committed from Windows or with core.filemode=false.
+      # Without this, every ./gradlew invocation fails with "Permission
+      # denied" (exit 126) and the build never runs.
+      # ------------------------------------------------------------------
+      - name: Ensure gradlew is executable
+        run: chmod +x gradlew
+
+      # ------------------------------------------------------------------
+      # Restore signing credentials from GitHub Secrets.
+      # Writes keystore to repo-root keystore/ and key.properties to
+      # repo-root. The storeFile path in key.properties is "../keystore/..."
+      # because app/build.gradle.kts resolves storeFile relative to the
+      # app/ module directory.
+      #
+      # NOTE: the `secrets` context is NOT available in step-level `if:`
+      # expressions (GitHub Actions restriction), so we can't skip the
+      # step when the secret is absent. Instead we always run it and let
+      # the body no-op when KEYSTORE_BASE64 is empty — the build then
+      # falls back to debug signing (build.gradle.kts handles missing
+      # key.properties by using the debug signing config).
+      # ------------------------------------------------------------------
+      - name: Restore Android signing credentials
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          if [ -z "$KEYSTORE_BASE64" ]; then
+            echo "ANDROID_KEYSTORE_BASE64 secret not set — skipping signing restore."
+            echo "Build will use debug signing config."
+            exit 0
+          fi
+          mkdir -p keystore
+          echo "$KEYSTORE_BASE64" | base64 --decode > keystore/loan-tracker-release.keystore
+          cat > key.properties <<EOF
+          storeFile=../keystore/loan-tracker-release.keystore
+          storePassword=$KEYSTORE_PASSWORD
+          keyAlias=$KEY_ALIAS
+          keyPassword=$KEY_PASSWORD
+          EOF
+          echo "Signing credentials restored."
+          ls -la keystore/ key.properties
+
+      - name: Show toolchain
+        run: |
+          echo "=== Java ==="
+          java -version
+          echo "=== Gradle ==="
+          ./gradlew --version
+
+      # ------------------------------------------------------------------
+      # Build. R8 minify is enabled in build.gradle.kts. CI runners have
+      # 7 GB RAM so this won't OOM (unlike the 4 GB sandbox).
+      # ------------------------------------------------------------------
+      - name: Build release APK
+        run: ./gradlew :app:assembleRelease --stacktrace
+
+      - name: Build debug APK (diagnostic)
+        if: github.event.inputs.build_type != 'release'
+        run: ./gradlew :app:assembleDebug --stacktrace
+
+      # ------------------------------------------------------------------
+      # Verification battery:
+      #   1. apksigner verify --print-certs (signature + fingerprint)
+      #   2. aapt2 dump badging (version, minSdk, launchable)
+      # continue-on-error: a verify-script bug never blocks the upload of
+      # a successfully-built APK.
+      # ------------------------------------------------------------------
+      - name: Verify release APK
+        continue-on-error: true
+        run: |
+          set +e
+          APK="$GITHUB_WORKSPACE/app/build/outputs/apk/release/app-release.apk"
+          echo "=== APK size ==="
+          ls -lh "$APK"
+          echo ""
+          echo "=== apksigner verify ==="
+          $ANDROID_HOME/build-tools/35.0.0/apksigner verify --verbose --print-certs "$APK"
+          echo ""
+          echo "=== aapt2 badging ==="
+          $ANDROID_HOME/build-tools/35.0.0/aapt2 dump badging "$APK" | head -5
+
+      # ------------------------------------------------------------------
+      # Upload APKs as workflow artifacts (retained 30 days).
+      # if: always() so a verification failure never blocks the upload.
+      # ------------------------------------------------------------------
+      - name: Upload release APK
+        if: always()
+        uses: actions/upload-artifact@v5
+        with:
+          name: loan-tracker-release
+          path: app/build/outputs/apk/release/app-release.apk
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Upload debug APK
+        if: always() && github.event.inputs.build_type != 'release'
+        uses: actions/upload-artifact@v5
+        with:
+          name: loan-tracker-debug
+          path: app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 30
+
+      # ------------------------------------------------------------------
+      # Publish a GitHub Release when versionName changes.
+      # Idempotent: skips if release v<name> already exists.
+      # Only runs on main (not PRs).
+      # ------------------------------------------------------------------
+      - name: Publish GitHub Release
+        if: always() && github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION=$(grep 'versionName' app/build.gradle.kts | head -1 | sed -E 's/.*versionName = "([^"]+)".*/\1/')
+          TAG="v${VERSION}"
+          echo "Version: $VERSION  Tag: $TAG"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "Release $TAG already exists — skipping."
+          else
+            APK=app/build/outputs/apk/release/app-release.apk
+            SHA256=$(sha256sum "$APK" | awk '{print $1}')
+            gh release create "$TAG" "$APK" \
+              --title "Loan Tracker $TAG" \
+              --notes "Loan Tracker Native $VERSION
+
+          **APK:** app-release.apk
+          **SHA-256:** \`$SHA256\`
+
+          Install over any previous version — same signing certificate, in-place update."
+            echo "Released $TAG"
+          fi
