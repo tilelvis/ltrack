@@ -11,6 +11,7 @@ import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.LocalFireDepartment
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -19,6 +20,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.loantracker.app.data.DailyPaymentCalculator
 import com.loantracker.app.data.DailyPaymentRecommendation
 import com.loantracker.app.data.Loan
 import com.loantracker.app.data.Payment
@@ -50,13 +52,14 @@ fun DashboardScreen(
         loans.filter { it.isRepaid(paidByLoan[it.id] ?: 0.0) }
     }
 
-    val hero = activeLoans.firstOrNull()
-    val heroPaid = if (hero != null) {
-        vm.totalPaid(hero.id).collectAsStateWithLifecycle().value
-    } else 0.0
-    val heroRecommendation = if (hero != null) {
-        vm.dailyRecommendation(hero.id).collectAsStateWithLifecycle().value
-    } else null
+    // The loan card at the front of the stack (kept by id so it survives list changes).
+    var selectedId by rememberSaveable { mutableStateOf<String?>(null) }
+    val frontIndex = activeLoans.indexOfFirst { it.id == selectedId }.let { if (it < 0) 0 else it }
+    val selected = activeLoans.getOrNull(frontIndex)
+    val selectedPaid = selected?.let { paidByLoan[it.id] } ?: 0.0
+    val selectedRecommendation = remember(selected, selectedPaid) {
+        selected?.let { DailyPaymentCalculator.calculate(it, selectedPaid) }
+    }
     val (currentStreak, bestStreak) = computeStreak(allPayments)
 
     Scaffold(
@@ -103,40 +106,34 @@ fun DashboardScreen(
             verticalArrangement = Arrangement.spacedBy(8.dp),
             contentPadding = PaddingValues(vertical = 16.dp)
         ) {
-            if (hero != null) {
-                item {
-                    HeroLoanCard(
-                        loan = hero,
-                        totalPaid = heroPaid,
-                        recommendation = heroRecommendation,
-                        onClick = { onOpenLoan(hero.id) }
+            if (selected != null) {
+                item(key = "loan_stack") {
+                    LoanCardStack(
+                        loans = activeLoans,
+                        paidByLoan = paidByLoan,
+                        frontIndex = frontIndex,
+                        onSelect = { selectedId = activeLoans[it].id },
+                        onOpen = { onOpenLoan(it.id) }
                     )
                 }
-                item {
+                if (activeLoans.size > 1) {
+                    item(key = "loan_dots") {
+                        LoanDots(
+                            count = activeLoans.size,
+                            selected = frontIndex,
+                            onSelect = { selectedId = activeLoans[it].id }
+                        )
+                    }
+                }
+                selectedRecommendation?.let { rec ->
+                    item(key = "loan_recommendation") { RecommendationCard(rec) }
+                }
+                item(key = "streak") {
                     StreakCard(currentStreak = currentStreak, bestStreak = bestStreak)
                 }
             } else {
                 item {
                     AllClearCard(completedCount = completedLoans.size, onAddLoan = onAddLoan)
-                }
-            }
-
-            val others = activeLoans.drop(1)
-            if (others.isNotEmpty()) {
-                item {
-                    Text(
-                        "Other active loans",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        modifier = Modifier.padding(top = 8.dp, bottom = 4.dp)
-                    )
-                }
-                items(others, key = { it.id }) { loan ->
-                    CompactLoanCard(
-                        loan = loan,
-                        totalPaid = paidByLoan[loan.id] ?: 0.0,
-                        onClick = { onOpenLoan(loan.id) }
-                    )
                 }
             }
 
@@ -277,81 +274,6 @@ private fun CompletedLoanRow(loan: Loan, note: String, onClick: () -> Unit) {
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
-    }
-}
-
-@Composable
-private fun HeroLoanCard(
-    loan: Loan,
-    totalPaid: Double,
-    recommendation: DailyPaymentRecommendation?,
-    onClick: () -> Unit
-) {
-    val balance = (loan.totalPayable - totalPaid).coerceAtLeast(0.0)
-    val progress = if (loan.totalPayable > 0) (totalPaid / loan.totalPayable).coerceIn(0.0, 1.0).toFloat() else 0f
-    val percent = (progress * 100).toInt()
-    val days = loan.daysRemaining
-
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick),
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.primaryContainer
-        )
-    ) {
-        Column(modifier = Modifier.padding(20.dp)) {
-            Text(
-                loan.title,
-                style = MaterialTheme.typography.titleSmall,
-                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
-            )
-            Spacer(Modifier.height(4.dp))
-            Text(
-                formatMoney(balance),
-                fontSize = 32.sp,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onPrimaryContainer
-            )
-            Text(
-                "of ${formatMoney(loan.totalPayable)}",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.75f)
-            )
-            Spacer(Modifier.height(12.dp))
-            LinearProgressIndicator(
-                progress = { progress },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(8.dp),
-                color = MaterialTheme.colorScheme.primary,
-                trackColor = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.15f)
-            )
-            Spacer(Modifier.height(8.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Text(
-                    "$percent% repaid",
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer
-                )
-                Text(
-                    daysLeftText(days),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = if (days <= 0) MaterialTheme.colorScheme.error
-                            else MaterialTheme.colorScheme.onPrimaryContainer
-                )
-            }
-        }
-    }
-
-    recommendation?.let { rec ->
-        Spacer(Modifier.height(8.dp))
-        RecommendationCard(rec)
     }
 }
 
