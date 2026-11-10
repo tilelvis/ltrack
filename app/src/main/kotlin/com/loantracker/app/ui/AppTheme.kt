@@ -30,10 +30,10 @@ fun loanTrackerColorScheme(dark: Boolean): ColorScheme =
         onSecondary = Color(0xFF1E3329),
         secondaryContainer = Color(0xFF33493D),
         onSecondaryContainer = Color(0xFFD5E8DC),
-        tertiary = Color(0xFFE3C27A),
-        onTertiary = Color(0xFF3A2A05),
-        tertiaryContainer = Color(0xFF54401A),
-        onTertiaryContainer = Color(0xFFF6E3B8),
+        tertiary = Color(0xFFFF8A5B),
+        onTertiary = Color(0xFF3A1200),
+        tertiaryContainer = Color(0xFF5A2A14),
+        onTertiaryContainer = Color(0xFFFFD9CB),
         background = Color(0xFF0F1511),
         onBackground = Color(0xFFE0E6E2),
         surface = Color(0xFF0F1511),
@@ -62,10 +62,10 @@ fun loanTrackerColorScheme(dark: Boolean): ColorScheme =
         onSecondary = Color(0xFFFFFFFF),
         secondaryContainer = Color(0xFFDCE9E0),
         onSecondaryContainer = Color(0xFF1A2D23),
-        tertiary = Color(0xFF8A6A1F),
+        tertiary = Color(0xFFF25C2A),
         onTertiary = Color(0xFFFFFFFF),
-        tertiaryContainer = Color(0xFFF4E7C8),
-        onTertiaryContainer = Color(0xFF3A2A05),
+        tertiaryContainer = Color(0xFFFFE1D6),
+        onTertiaryContainer = Color(0xFF4A1A08),
         background = Color(0xFFF4F7F4),
         onBackground = Color(0xFF1C2420),
         surface = Color(0xFFF4F7F4),
@@ -86,6 +86,15 @@ fun loanTrackerColorScheme(dark: Boolean): ColorScheme =
         surfaceContainerHigh = Color(0xFFE3EBE5),
         surfaceContainerHighest = Color(0xFFDDE6DF)
     )
+
+/**
+ * The one accent that pops: a vivid coral-orange (Material's tertiary role). Use it sparingly,
+ * for the primary action (FABs), the selected card dot and small highlights. The base theme stays
+ * calm sage green so the accent draws the eye.
+ */
+@Composable
+fun accentTextColor(): Color =
+    if (isDarkTheme()) Color(0xFFFF9A73) else Color(0xFFC2410C)  // readable on the page background
 
 /** True when the active app theme is dark (works with the manual theme toggle). */
 @Composable

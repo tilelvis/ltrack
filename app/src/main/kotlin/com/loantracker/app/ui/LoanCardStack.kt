@@ -69,8 +69,8 @@ fun loanCardPalette(index: Int): CardPalette {
         1 -> if (dark) CardPalette(Color(0xFF203645), Color(0xFFCFE5F3), Color(0xFF8CC4E6))
              else CardPalette(Color(0xFFDCEBF5), Color(0xFF12303F), Color(0xFF2F6F96))
         2 -> CardPalette(s.tertiaryContainer, s.onTertiaryContainer, s.tertiary)
-        else -> if (dark) CardPalette(Color(0xFF3E2630), Color(0xFFF2D4DE), Color(0xFFE79BB4))
-                else CardPalette(Color(0xFFF3E1E8), Color(0xFF3C1A28), Color(0xFF9A4A66))
+        else -> if (dark) CardPalette(Color(0xFF2C2840), Color(0xFFE2DDF5), Color(0xFFB3A5F0))
+                else CardPalette(Color(0xFFE6E1F4), Color(0xFF231A45), Color(0xFF6C55C9))
     }
 }
 
@@ -343,7 +343,7 @@ fun LoanDots(
                         .size(width = w, height = 8.dp)
                         .clip(CircleShape)
                         .background(
-                            if (i == selected) MaterialTheme.colorScheme.primary
+                            if (i == selected) MaterialTheme.colorScheme.tertiary
                             else MaterialTheme.colorScheme.outlineVariant
                         )
                         .clickable { onSelect(i) }

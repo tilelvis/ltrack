@@ -117,8 +117,8 @@ fun SmsScanScreen(
                                     }
                                 onBack()
                             },
-                            containerColor = MaterialTheme.colorScheme.primary,
-                            contentColor = MaterialTheme.colorScheme.onPrimary
+                            containerColor = MaterialTheme.colorScheme.tertiary,
+                            contentColor = MaterialTheme.colorScheme.onTertiary
                         ) {
                             Text("Import ${selected.size}")
                         }

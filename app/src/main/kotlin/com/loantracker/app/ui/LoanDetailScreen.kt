@@ -87,7 +87,11 @@ fun LoanDetailScreen(
             )
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = { onAddPayment(loanId) }) {
+            FloatingActionButton(
+                onClick = { onAddPayment(loanId) },
+                containerColor = MaterialTheme.colorScheme.tertiary,
+                contentColor = MaterialTheme.colorScheme.onTertiary
+            ) {
                 Icon(Icons.Filled.Add, contentDescription = "Add payment")
             }
         }

@@ -210,7 +210,7 @@ private fun ConfettiTrophy() {
         Icon(
             Icons.Filled.EmojiEvents,
             contentDescription = null,
-            tint = scheme.tertiary,
+            tint = toneColors(Tone.CAUTION).fg,
             modifier = Modifier
                 .size(68.dp)
                 .graphicsLayer {

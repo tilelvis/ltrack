@@ -68,7 +68,11 @@ fun DashboardScreen(
             TopAppBar(title = { Text("Loan Tracker") }, colors = appBarColors())
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = onAddLoan) {
+            FloatingActionButton(
+                onClick = onAddLoan,
+                containerColor = MaterialTheme.colorScheme.tertiary,
+                contentColor = MaterialTheme.colorScheme.onTertiary
+            ) {
                 Icon(Icons.Filled.Add, contentDescription = "Add loan")
             }
         }
