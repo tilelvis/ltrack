@@ -125,7 +125,7 @@ fun SettingsScreen(
                     )
                     Spacer(Modifier.height(4.dp))
                     Text(
-                        "v2.7.0",
+                        "v2.7.1",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )

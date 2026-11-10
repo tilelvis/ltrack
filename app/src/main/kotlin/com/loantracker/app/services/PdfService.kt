@@ -33,7 +33,7 @@ object PdfService {
     private const val H = 842
     private const val M = 40f
     private const val BAND_H = 132f
-    private const val ROW_H = 24f
+    private const val ROW_H = 22f
     private const val CONTENT_BOTTOM = 788f
 
     private val BRAND = Color.parseColor("#0F3D2E")
@@ -65,14 +65,17 @@ object PdfService {
         val today = LocalDate.now()
         val lastPaid: LocalDate? = sorted.lastOrNull()?.paidAt?.toLocalDate()
 
-        val details = buildList<Pair<String, String>> {
+        // Core facts sit on ONE row; contact info and notes (if any) get a second, wider row.
+        val core = buildList<Pair<String, String>> {
             loan.lenderName?.takeIf { it.isNotBlank() }?.let { add("LENDER" to it) }
-            loan.lenderPhone?.takeIf { it.isNotBlank() }?.let { add("LENDER PHONE" to it) }
-            loan.lenderEmail?.takeIf { it.isNotBlank() }?.let { add("LENDER EMAIL" to it) }
             loan.keyword?.takeIf { it.isNotBlank() }?.let { add("M-PESA ACCOUNT" to it) }
             add("START DATE" to loan.startDate.format(DATE_FMT))
             add("DUE DATE" to loan.dueDate.format(DATE_FMT))
             add("LOAN PERIOD" to "${ChronoUnit.DAYS.between(loan.startDate, loan.dueDate) + 1} days")
+        }
+        val extras = buildList<Pair<String, String>> {
+            loan.lenderPhone?.takeIf { it.isNotBlank() }?.let { add("LENDER PHONE" to it) }
+            loan.lenderEmail?.takeIf { it.isNotBlank() }?.let { add("LENDER EMAIL" to it) }
             loan.notes?.takeIf { it.isNotBlank() }?.let { add("NOTES" to it) }
         }
 
@@ -80,7 +83,7 @@ object PdfService {
         val heroTop = BAND_H + 26f
         val tilesTop = heroTop + 112f + 14f
         val detailsTop = tilesTop + 58f + 26f
-        val detailRows = (details.size + 1) / 2
+        val detailRows = 1 + (if (extras.isEmpty()) 0 else (extras.size + 2) / 3)
         val tableTitleY = detailsTop + 22f + detailRows * 36f + 14f
         val firstRowsY = tableTitleY + 12f + 28f
         val contRowsY = 78f + 12f + 28f
@@ -167,13 +170,17 @@ object PdfService {
 
         // details
         sectionTitle(canvas, "LOAN DETAILS", detailsTop)
-        val colW = (W - 2 * M) / 2f
-        details.forEachIndexed { i, (l, v) ->
-            val cx = M + (i % 2) * colW
-            val cy = detailsTop + 22f + (i / 2) * 36f
-            canvas.drawText(l, cx, cy + 12f, label(7.5f, MUTED))
-            canvas.drawText(fit(v, text(11f, INK), colW - 20f), cx, cy + 28f, text(11f, INK))
+        fun drawGrid(items: List<Pair<String, String>>, perRow: Int, startY: Float) {
+            val cellW = (W - 2 * M) / perRow
+            items.forEachIndexed { i, (l, v) ->
+                val cx = M + (i % perRow) * cellW
+                val cy = startY + (i / perRow) * 36f
+                canvas.drawText(l, cx, cy + 12f, label(7.5f, MUTED))
+                canvas.drawText(fit(v, text(11f, INK, bold = true), cellW - 14f), cx, cy + 28f, text(11f, INK, bold = true))
+            }
         }
+        drawGrid(core, core.size, detailsTop + 22f)
+        if (extras.isNotEmpty()) drawGrid(extras, minOf(extras.size, 3), detailsTop + 22f + 36f)
 
         // payment history
         sectionTitle(canvas, "PAYMENT HISTORY (${sorted.size})", tableTitleY)
@@ -203,7 +210,7 @@ object PdfService {
             }
             if (i % 2 == 0) canvas.drawRect(M, y, W - M, y + ROW_H, fill(TINT_2))
             running = (running - p.amount).coerceAtLeast(0.0)
-            val base = y + 16f
+            val base = y + 15f
             canvas.drawText(p.paidAt.format(DATE_TIME_FMT), M + 12f, base, dateP)
             canvas.drawText(if (p.source == PaymentSource.MPESA) "M-Pesa" else "Manual", 172f, base, mutedP)
             canvas.drawText(fit(p.mpesaCode ?: "—", mutedP, 100f), 238f, base, mutedP)
