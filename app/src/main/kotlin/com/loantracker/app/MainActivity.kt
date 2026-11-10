@@ -30,6 +30,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavGraph.Companion.findStartDestination
@@ -40,6 +42,7 @@ import androidx.navigation.compose.rememberNavController
 import com.loantracker.app.services.NotificationService
 import com.loantracker.app.services.ThemeMode
 import com.loantracker.app.services.ThemeService
+import com.loantracker.app.services.UpdateController
 import com.loantracker.app.ui.AddLoanScreen
 import com.loantracker.app.ui.AddPaymentScreen
 import com.loantracker.app.ui.CelebrationDialog
@@ -51,6 +54,7 @@ import com.loantracker.app.ui.loanTrackerColorScheme
 import com.loantracker.app.ui.MpesaImportScreen
 import com.loantracker.app.ui.SettingsScreen
 import com.loantracker.app.ui.SmsScanScreen
+import com.loantracker.app.ui.UpdateDialogs
 
 private val DefaultLightScrim = 0xE6FFFFFF.toInt()
 private val DefaultDarkScrim = 0x801B1B1B.toInt()
@@ -110,6 +114,12 @@ private fun AppNav() {
 
     val celebration by vm.celebration.collectAsStateWithLifecycle()
     celebration?.let { CelebrationDialog(it) { vm.dismissCelebration() } }
+
+    // Check GitHub Releases whenever the app comes to the foreground (throttled to every 30 min).
+    val updateContext = LocalContext.current
+    val updater = remember { UpdateController.get(updateContext) }
+    LifecycleEventEffect(Lifecycle.Event.ON_START) { updater.autoCheck() }
+    UpdateDialogs(updater)
 
     val navItems = listOf(
         NavItem("dashboard", "Dashboard", { Icon(Icons.Filled.Dashboard, contentDescription = null) }),

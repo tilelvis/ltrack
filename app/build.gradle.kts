@@ -22,8 +22,15 @@ android {
         applicationId = "com.loantracker.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 14
-        versionName = "2.7.1"
+        versionCode = 15
+        versionName = "2.8.0"
+
+        // GitHub repo that hosts the releases the app updates from. In GitHub Actions this is
+        // picked up automatically from GITHUB_REPOSITORY (owner/repo); override with -PgithubRepo=...
+        val githubRepo = (project.findProperty("githubRepo") as String?)
+            ?: System.getenv("GITHUB_REPOSITORY")
+            ?: "tilelvis/ltrack"
+        buildConfigField("String", "GITHUB_REPO", "\"$githubRepo\"")
     }
 
     signingConfigs {
@@ -53,7 +60,10 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
     kotlinOptions { jvmTarget = "17" }
-    buildFeatures { compose = true }
+    buildFeatures {
+        compose = true
+        buildConfig = true
+    }
 }
 
 dependencies {

@@ -176,13 +176,18 @@ jobs:
           else
             APK=app/build/outputs/apk/release/app-release.apk
             SHA256=$(sha256sum "$APK" | awk '{print $1}')
+            NOTES_FILE=$(mktemp)
+            {
+              git log -1 --pretty=%B
+              echo
+              echo "---"
+              echo "**APK:** app-release.apk"
+              echo "**SHA-256:** \`$SHA256\`"
+              echo
+              echo "Install over any previous version: same signing certificate, in-place update."
+            } > "$NOTES_FILE"
             gh release create "$TAG" "$APK" \
               --title "Loan Tracker $TAG" \
-              --notes "Loan Tracker Native $VERSION
-
-          **APK:** app-release.apk
-          **SHA-256:** \`$SHA256\`
-
-          Install over any previous version — same signing certificate, in-place update."
+              --notes-file "$NOTES_FILE"
             echo "Released $TAG"
           fi
