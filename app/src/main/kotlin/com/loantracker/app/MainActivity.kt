@@ -45,6 +45,7 @@ import com.loantracker.app.services.ThemeService
 import com.loantracker.app.services.UpdateController
 import com.loantracker.app.ui.AddLoanScreen
 import com.loantracker.app.ui.AddPaymentScreen
+import com.loantracker.app.ui.AppTypography
 import com.loantracker.app.ui.CelebrationDialog
 import com.loantracker.app.ui.DashboardScreen
 import com.loantracker.app.ui.LoanDetailScreen
@@ -95,7 +96,7 @@ class MainActivity : ComponentActivity() {
 @Composable
 private fun LoanTrackerTheme(dark: Boolean, content: @Composable () -> Unit) {
     val colors = loanTrackerColorScheme(dark)
-    MaterialTheme(colorScheme = colors) {
+    MaterialTheme(colorScheme = colors, typography = AppTypography) {
         Surface(color = MaterialTheme.colorScheme.background) { content() }
     }
 }

@@ -53,6 +53,8 @@ fun LoanDetailScreen(
     val payments by vm.payments(loanId).collectAsStateWithLifecycle()
     val totalPaid by vm.totalPaid(loanId).collectAsStateWithLifecycle()
     val recommendation by vm.dailyRecommendation(loanId).collectAsStateWithLifecycle()
+    val repaid = loan?.isRepaid(totalPaid) == true
+    val lastPaid = remember(payments) { payments.lastPaidDateByLoan().values.firstOrNull() }
 
     var showDeleteLoanDialog by remember { mutableStateOf(false) }
     val deletePaymentTarget = remember { mutableStateOf<Payment?>(null) }
@@ -87,7 +89,7 @@ fun LoanDetailScreen(
             )
         },
         floatingActionButton = {
-            FloatingActionButton(
+            if (!repaid) FloatingActionButton(
                 onClick = { onAddPayment(loanId) },
                 containerColor = MaterialTheme.colorScheme.tertiary,
                 contentColor = MaterialTheme.colorScheme.onTertiary
@@ -115,20 +117,23 @@ fun LoanDetailScreen(
                 .padding(padding)
                 .padding(horizontal = 16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
-            contentPadding = PaddingValues(vertical = 16.dp)
+            contentPadding = PaddingValues(top = 16.dp, bottom = 96.dp)
         ) {
             item {
                 HeroDetailCard(
                     loan = l,
-                    totalPaid = totalPaid
+                    totalPaid = totalPaid,
+                    repaid = repaid,
+                    lastPaid = lastPaid
                 )
             }
 
-            recommendation?.let { rec ->
+            recommendation?.takeIf { it.severity != Severity.PAID }?.let { rec ->
                 item { DetailRecommendationCard(rec) }
             }
 
-            if (!l.lenderName.isNullOrBlank() ||
+            val lenderIsTitle = l.lenderName.equals(l.title, ignoreCase = true)
+            if ((!l.lenderName.isNullOrBlank() && !lenderIsTitle) ||
                 !l.lenderPhone.isNullOrBlank() ||
                 !l.lenderEmail.isNullOrBlank()
             ) {
@@ -209,7 +214,9 @@ fun LoanDetailScreen(
 @Composable
 private fun HeroDetailCard(
     loan: com.loantracker.app.data.Loan,
-    totalPaid: Double
+    totalPaid: Double,
+    repaid: Boolean,
+    lastPaid: java.time.LocalDate?
 ) {
     val balance = (loan.totalPayable - totalPaid).coerceAtLeast(0.0)
     val progress = if (loan.totalPayable > 0) {
@@ -258,19 +265,26 @@ private fun HeroDetailCard(
                     color = MaterialTheme.colorScheme.onPrimaryContainer
                 )
                 Text(
-                    "$percent% • ${daysLeftText(days)}",
+                    if (repaid) "Repaid" else "$percent% • ${daysLeftText(days)}",
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.SemiBold,
-                    color = if (days <= 0) MaterialTheme.colorScheme.error
-                            else MaterialTheme.colorScheme.onPrimaryContainer
+                    color = when {
+                        repaid -> toneColors(Tone.SUCCESS).fg
+                        days <= 0 -> MaterialTheme.colorScheme.error
+                        else -> MaterialTheme.colorScheme.onPrimaryContainer
+                    }
                 )
             }
             Spacer(Modifier.height(8.dp))
-            Text(
-                "Due ${loan.dueDate.format(DATE_FMT)}",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
-            )
+            if (repaid) {
+                RepaidNote(repaymentNote(loan.dueDate, lastPaid))
+            } else {
+                Text(
+                    "Due ${loan.dueDate.format(DATE_FMT)}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
+                )
+            }
         }
     }
 }
@@ -384,7 +398,7 @@ private fun PaymentRow(
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
+        shape = RoundedCornerShape(14.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceVariant
         )
@@ -392,7 +406,7 @@ private fun PaymentRow(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(14.dp),
+                .padding(start = 16.dp, top = 8.dp, bottom = 8.dp, end = 4.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column(modifier = Modifier.weight(1f)) {
@@ -402,31 +416,14 @@ private fun PaymentRow(
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.primary
                 )
-                Spacer(Modifier.height(2.dp))
                 Text(
-                    payment.paidAt.format(DATETIME_FMT),
+                    payment.paidAt.format(DATETIME_FMT) + "  ·  " +
+                        (payment.mpesaCode ?: if (payment.source == PaymentSource.MPESA) "M-Pesa" else "Manual"),
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                 )
-                payment.mpesaCode?.let { code ->
-                    Text(
-                        "M-Pesa: $code",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                Spacer(Modifier.height(4.dp))
-                Surface(
-                    shape = RoundedCornerShape(50),
-                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
-                    contentColor = MaterialTheme.colorScheme.primary
-                ) {
-                    Text(
-                        if (payment.source == PaymentSource.MPESA) "M-Pesa" else "Manual",
-                        style = MaterialTheme.typography.labelSmall,
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
-                    )
-                }
             }
             IconButton(onClick = onShare) {
                 Icon(Icons.Filled.Share, contentDescription = "Share receipt")

@@ -52,11 +52,31 @@ object PdfService {
     private val DATE_TIME_FMT = DateTimeFormatter.ofPattern("d MMM yyyy, HH:mm", Locale.ENGLISH)
     private val LONG_FMT = DateTimeFormatter.ofPattern("EEEE, d MMMM yyyy 'at' h:mm a", Locale.ENGLISH)
 
+    // Bundled typeface (Plus Jakarta Sans) so PDFs look the same on every phone.
+    private var tfRegular: Typeface = Typeface.create("sans-serif", Typeface.NORMAL)
+    private var tfMedium: Typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
+    private var tfBold: Typeface = Typeface.create("sans-serif-medium", Typeface.BOLD)
+
+    private fun loadFonts(context: Context) {
+        try {
+            fun weight(w: Int): Typeface? =
+                Typeface.Builder(context.assets, "fonts/plus_jakarta_sans.ttf")
+                    .setFontVariationSettings("'wght' $w")
+                    .build()
+            tfRegular = weight(400) ?: tfRegular
+            tfMedium = weight(500) ?: tfMedium
+            tfBold = weight(700) ?: tfBold
+        } catch (e: Exception) {
+            // Keep the system fonts if the bundled one can't be loaded.
+        }
+    }
+
     // ---------------------------------------------------------------- public API
 
     fun generateLoanReport(
         context: Context, loan: Loan, payments: List<Payment>, totalPaid: Double
     ): File? {
+        loadFonts(context)
         val sorted = payments.sortedBy { it.sortKey() }
         val repaid = isRepaid(loan, totalPaid)
         val balance = (loan.totalPayable - totalPaid).coerceAtLeast(0.0)
@@ -255,6 +275,7 @@ object PdfService {
     fun generatePaymentReceipt(
         context: Context, loan: Loan, payment: Payment, totalPaid: Double
     ): File? {
+        loadFonts(context)
         val repaid = isRepaid(loan, totalPaid)
         val balance = (loan.totalPayable - totalPaid).coerceAtLeast(0.0)
         val ref = payment.mpesaCode ?: payment.id.take(8).uppercase(Locale.ENGLISH)
@@ -464,8 +485,7 @@ object PdfService {
         textSize = size
         this.color = color
         textAlign = align
-        typeface = if (bold) Typeface.create("sans-serif-medium", Typeface.BOLD)
-                   else Typeface.create("sans-serif", Typeface.NORMAL)
+        typeface = if (bold) tfBold else tfRegular
     }
 
     /** Small-caps style label with letter spacing. */
@@ -473,7 +493,7 @@ object PdfService {
         textSize = size
         this.color = color
         letterSpacing = 0.14f
-        typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
+        typeface = tfMedium
     }
 
     private fun fill(color: Int): Paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {

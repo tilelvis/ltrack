@@ -6,6 +6,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.ContentPaste
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -33,6 +35,14 @@ fun MpesaImportScreen(
 ) {
     val loan by vm.loan(loanId).collectAsStateWithLifecycle()
     var message by remember { mutableStateOf("") }
+    val payments by vm.payments(loanId).collectAsStateWithLifecycle()
+    val clipboard = LocalClipboardManager.current
+
+    // If the clipboard already holds an M-Pesa confirmation, fill it in straight away.
+    LaunchedEffect(Unit) {
+        val text = clipboard.getText()?.text.orEmpty()
+        if (message.isBlank() && MpesaParser.parse(text) != null) message = text
+    }
 
     val parsed = remember(message) { MpesaParser.parse(message) }
 
@@ -86,6 +96,20 @@ fun MpesaImportScreen(
                 minLines = 4
             )
 
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                FilledTonalButton(onClick = {
+                    val text = clipboard.getText()?.text.orEmpty()
+                    if (text.isNotBlank()) message = text
+                }) {
+                    Icon(Icons.Filled.ContentPaste, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text("Paste")
+                }
+                if (message.isNotBlank()) {
+                    TextButton(onClick = { message = "" }) { Text("Clear") }
+                }
+            }
+
             val p = parsed
             if (p == null) {
                 if (message.isNotBlank()) {
@@ -121,6 +145,14 @@ fun MpesaImportScreen(
                 val dateInRange = !p.date.toLocalDate().isBefore(l.startDate) &&
                     !p.date.toLocalDate().isAfter(l.dueDate)
 
+                val duplicate = payments.any { it.mpesaCode.equals(p.code, ignoreCase = true) }
+                if (duplicate) {
+                    WarningCard(
+                        text = "This payment (${p.code}) is already recorded for this loan.",
+                        tone = Tone.CAUTION
+                    )
+                }
+
                 if (!accountMatches) {
                     WarningCard(
                         text = "Account ${p.account ?: "?"} doesn't match this loan's account (${l.keyword ?: "(none)"}).",
@@ -138,7 +170,7 @@ fun MpesaImportScreen(
                     )
                 }
 
-                if (accountMatches && dateInRange) {
+                if (accountMatches && dateInRange && !duplicate) {
                     WarningCard(
                         text = "Valid payment for this loan.",
                         tone = Tone.SUCCESS

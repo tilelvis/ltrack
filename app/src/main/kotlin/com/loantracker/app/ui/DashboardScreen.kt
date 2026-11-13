@@ -204,7 +204,7 @@ private fun AllClearCard(completedCount: Int, onAddLoan: () -> Unit) {
                 color = MaterialTheme.colorScheme.onPrimaryContainer
             )
             Text(
-                "No active loans. $completedCount ${if (completedCount == 1) "loan" else "loans"} cleared.",
+                "No active loans right now.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onPrimaryContainer
             )

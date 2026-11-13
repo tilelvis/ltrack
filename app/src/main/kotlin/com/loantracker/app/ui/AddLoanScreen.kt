@@ -19,10 +19,14 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.OffsetMapping
+import androidx.compose.ui.text.input.TransformedText
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.loantracker.app.data.Loan
@@ -192,6 +196,7 @@ fun AddLoanScreen(vm: LoanViewModel, onBack: () -> Unit) {
                         amount = digits.toIntOrNull() ?: 0
                     },
                     prefix = { Text("KSh ") },
+                    visualTransformation = ThousandsTransformation,
                     textStyle = MaterialTheme.typography.titleLarge,
                     singleLine = true,
                     isError = amount <= 0,
@@ -518,6 +523,32 @@ fun AddLoanScreen(vm: LoanViewModel, onBack: () -> Unit) {
             onConfirm = { startEpoch = it.toEpochDay(); showStartPicker = false },
             onDismiss = { showStartPicker = false }
         )
+    }
+}
+
+/** Shows 5000 as 5,000 while the stored value stays plain digits. */
+private object ThousandsTransformation : VisualTransformation {
+    override fun filter(text: AnnotatedString): TransformedText {
+        val digits = text.text
+        val n = digits.length
+        val out = StringBuilder()
+        digits.forEachIndexed { i, c ->
+            if (i > 0 && (n - i) % 3 == 0) out.append(',')
+            out.append(c)
+        }
+        fun commasUpTo(o: Int): Int {
+            var count = 0
+            for (i in 1..minOf(o, n - 1)) if ((n - i) % 3 == 0) count++
+            return count
+        }
+        val mapping = object : OffsetMapping {
+            override fun originalToTransformed(offset: Int): Int = offset + commasUpTo(offset)
+            override fun transformedToOriginal(offset: Int): Int {
+                for (o in 0..n) if (o + commasUpTo(o) >= offset) return o
+                return n
+            }
+        }
+        return TransformedText(AnnotatedString(out.toString()), mapping)
     }
 }
 

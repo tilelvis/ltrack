@@ -3,30 +3,42 @@ package com.loantracker.app.ui
 import android.Manifest
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.loantracker.app.services.DetectedPayment
 import com.loantracker.app.services.SmsService
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.time.format.DateTimeFormatter
 
 private val DATETIME_FMT: DateTimeFormatter = DateTimeFormatter.ofPattern("dd MMM yyyy, HH:mm")
+private val DATE_ONLY_FMT: DateTimeFormatter = DateTimeFormatter.ofPattern("dd MMM")
 
 private fun formatMoneyScan(amount: Double): String = "KSh %,.0f".format(amount)
 
+/**
+ * Scans the SMS inbox automatically when opened. New payments come first and are pre-selected;
+ * payments already in the app are tucked into a collapsed section.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SmsScanScreen(
@@ -41,19 +53,33 @@ fun SmsScanScreen(
     val payments by vm.payments(loanId).collectAsStateWithLifecycle()
 
     var detections by remember { mutableStateOf<List<DetectedPayment>>(emptyList()) }
-    var selected by remember { mutableStateOf(setOf<String>()) }
+    var deselected by remember { mutableStateOf(setOf<String>()) }
     var scanning by remember { mutableStateOf(false) }
     var hasScanned by remember { mutableStateOf(false) }
     var permissionDenied by remember { mutableStateOf(false) }
+    var showImported by rememberSaveable { mutableStateOf(false) }
+
+    // "Already in app" is judged live against the loan's payments, so it stays right after import.
+    val importedCodes = remember(payments) { payments.mapNotNull { it.mpesaCode?.uppercase() }.toSet() }
+    val fresh = remember(detections, importedCodes) {
+        detections.filter { it.mpesa.code.uppercase() !in importedCodes }
+    }
+    val done = remember(detections, importedCodes) {
+        detections.filter { it.mpesa.code.uppercase() in importedCodes }
+    }
+    val selectedCodes = remember(fresh, deselected) {
+        fresh.map { it.mpesa.code }.filter { it !in deselected }.toSet()
+    }
 
     fun doScan() {
         val l = loan ?: return
         scanning = true
         scope.launch {
-            val codes = payments.mapNotNull { it.mpesaCode?.uppercase() }.toSet()
-            val results = SmsService.scanForLoan(context, l, codes)
-            detections = results
-            selected = results.filter { !it.alreadyImported }.map { it.mpesa.code }.toSet()
+            val results = withContext(Dispatchers.IO) {
+                SmsService.scanForLoan(context, l, emptySet())
+            }
+            detections = results.distinctBy { it.mpesa.code.uppercase() }
+            deselected = emptySet()
             scanning = false
             hasScanned = true
         }
@@ -67,6 +93,14 @@ fun SmsScanScreen(
             doScan()
         } else {
             permissionDenied = true
+        }
+    }
+
+    // Scan as soon as the loan is loaded (asking for SMS permission first if needed).
+    LaunchedEffect(loan?.id) {
+        if (loan != null && !hasScanned) {
+            if (SmsService.hasPermission(context)) doScan()
+            else permissionLauncher.launch(Manifest.permission.READ_SMS)
         }
     }
 
@@ -89,18 +123,18 @@ fun SmsScanScreen(
                             permissionLauncher.launch(Manifest.permission.READ_SMS)
                         }
                     }) {
-                        Icon(Icons.Filled.Refresh, contentDescription = "Scan")
+                        Icon(Icons.Filled.Refresh, contentDescription = "Scan again")
                     }
                 }
             )
         },
         bottomBar = {
-            if (selected.isNotEmpty() && detections.isNotEmpty()) {
+            if (selectedCodes.isNotEmpty()) {
                 BottomAppBar(
                     containerColor = MaterialTheme.colorScheme.primaryContainer,
                     actions = {
                         Text(
-                            "${selected.size} selected",
+                            "${selectedCodes.size} selected",
                             modifier = Modifier.padding(start = 16.dp),
                             fontWeight = FontWeight.SemiBold
                         )
@@ -109,18 +143,17 @@ fun SmsScanScreen(
                         ExtendedFloatingActionButton(
                             onClick = {
                                 val l = loan ?: return@ExtendedFloatingActionButton
-                                detections
-                                    .filter { it.mpesa.code in selected }
-                                    .forEach { det ->
-                                        val payment = SmsService.toPayment(det, l.id)
-                                        vm.addPayment(payment)
-                                    }
+                                vm.addPayments(
+                                    fresh
+                                        .filter { it.mpesa.code in selectedCodes }
+                                        .map { SmsService.toPayment(it, l.id) }
+                                )
                                 onBack()
                             },
                             containerColor = MaterialTheme.colorScheme.tertiary,
                             contentColor = MaterialTheme.colorScheme.onTertiary
                         ) {
-                            Text("Import ${selected.size}")
+                            Text("Import ${selectedCodes.size}")
                         }
                     }
                 )
@@ -130,141 +163,155 @@ fun SmsScanScreen(
         val l = loan
         if (l == null) {
             Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding),
+                modifier = Modifier.fillMaxSize().padding(padding),
                 contentAlignment = Alignment.Center
-            ) {
-                CircularProgressIndicator()
-            }
+            ) { CircularProgressIndicator() }
             return@Scaffold
         }
 
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-        ) {
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                shape = RoundedCornerShape(12.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant
-                )
+        when {
+            permissionDenied -> CenteredMessage(
+                modifier = Modifier.fillMaxSize().padding(padding).padding(24.dp),
+                title = "SMS permission required",
+                body = "Allow SMS access so Loan Tracker can find M-Pesa messages for this loan.",
+                actionLabel = "Allow access",
+                onAction = { permissionLauncher.launch(Manifest.permission.READ_SMS) }
+            )
+
+            scanning || !hasScanned -> Box(
+                modifier = Modifier.fillMaxSize().padding(padding),
+                contentAlignment = Alignment.Center
             ) {
-                Column(modifier = Modifier.padding(14.dp)) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    CircularProgressIndicator()
+                    Spacer(Modifier.height(12.dp))
                     Text(
-                        "Scanning for M-Pesa messages",
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                    Spacer(Modifier.height(4.dp))
-                    Text(
-                        buildString {
-                            append("Account: ${l.keyword ?: "(none)"}")
-                            append("\nRange: ${l.startDate.format(DateTimeFormatter.ofPattern("dd MMM yyyy"))}")
-                            append(" → ${l.dueDate.format(DateTimeFormatter.ofPattern("dd MMM yyyy"))}")
-                        },
-                        style = MaterialTheme.typography.bodySmall,
+                        "Looking for M-Pesa messages…",
+                        style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
 
-            if (permissionDenied) {
-                PermissionDeniedView(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(24.dp),
-                    onGrant = {
-                        permissionLauncher.launch(Manifest.permission.READ_SMS)
-                    }
-                )
-                return@Column
-            }
+            detections.isEmpty() -> CenteredMessage(
+                modifier = Modifier.fillMaxSize().padding(padding).padding(24.dp),
+                title = "No matching messages",
+                body = "No M-Pesa messages matched account ${l.keyword ?: "(none)"} in the " +
+                    "last 90 days.",
+                actionLabel = "Scan again",
+                onAction = { doScan() }
+            )
 
-            if (scanning) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(32.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        CircularProgressIndicator()
-                        Spacer(Modifier.height(12.dp))
-                        Text("Scanning inbox…")
-                    }
-                }
-                return@Column
-            }
-
-            if (hasScanned && detections.isEmpty()) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(32.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(
-                            "No matching messages found",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.SemiBold
-                        )
-                        Spacer(Modifier.height(8.dp))
-                        Text(
-                            "No M-Pesa messages matched this loan's account number and date range.",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-                return@Column
-            }
-
-            if (!hasScanned && detections.isEmpty()) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(32.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text("Tap the refresh icon to scan your SMS inbox.")
-                        Text(
-                            "We'll find M-Pesa messages matching this loan's account number and date range.",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(top = 8.dp)
-                        )
-                    }
-                }
-                return@Column
-            }
-
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = 16.dp),
+            else -> LazyColumn(
+                modifier = Modifier.fillMaxSize().padding(padding).padding(horizontal = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
-                contentPadding = PaddingValues(vertical = 8.dp)
+                contentPadding = PaddingValues(top = 4.dp, bottom = 24.dp)
             ) {
-                items(detections, key = { it.mpesa.code }) { det ->
-                    DetectionRow(
-                        detected = det,
-                        isSelected = det.mpesa.code in selected,
-                        onToggle = {
-                            if (det.alreadyImported) return@DetectionRow
-                            selected = if (det.mpesa.code in selected) {
-                                selected - det.mpesa.code
-                            } else {
-                                selected + det.mpesa.code
+                item(key = "info") {
+                    Text(
+                        "Account ${l.keyword ?: "(none)"}  ·  ${l.startDate.format(DATE_ONLY_FMT)} to " +
+                            l.dueDate.format(DATE_ONLY_FMT),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(vertical = 4.dp)
+                    )
+                }
+
+                if (fresh.isEmpty()) {
+                    item(key = "caught_up") {
+                        val tone = toneColors(Tone.SUCCESS)
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = MaterialTheme.shapes.large,
+                            colors = CardDefaults.cardColors(containerColor = tone.bg)
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth().padding(16.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(Icons.Filled.CheckCircle, contentDescription = null, tint = tone.fg)
+                                Spacer(Modifier.width(12.dp))
+                                Column {
+                                    Text(
+                                        "All caught up",
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        color = tone.fg
+                                    )
+                                    Text(
+                                        "All ${done.size} matching payments are already in the app.",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                }
                             }
                         }
-                    )
+                    }
+                } else {
+                    item(key = "new_header") {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                "New (${fresh.size})",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.SemiBold,
+                                modifier = Modifier.weight(1f)
+                            )
+                            TextButton(onClick = {
+                                deselected = if (selectedCodes.size == fresh.size)
+                                    fresh.map { it.mpesa.code }.toSet() else emptySet()
+                            }) {
+                                Text(if (selectedCodes.size == fresh.size) "Select none" else "Select all")
+                            }
+                        }
+                    }
+                    items(fresh, key = { "new_" + it.mpesa.code }) { det ->
+                        DetectionRow(
+                            detected = det,
+                            imported = false,
+                            isSelected = det.mpesa.code in selectedCodes,
+                            onToggle = {
+                                deselected = if (det.mpesa.code in deselected)
+                                    deselected - det.mpesa.code else deselected + det.mpesa.code
+                            }
+                        )
+                    }
+                }
+
+                if (done.isNotEmpty()) {
+                    item(key = "done_header") {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { showImported = !showImported }
+                                .padding(vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                "Already in app (${done.size})",
+                                style = MaterialTheme.typography.titleSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.weight(1f)
+                            )
+                            Icon(
+                                if (showImported) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
+                                contentDescription = if (showImported) "Hide" else "Show",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                    if (showImported) {
+                        items(done, key = { "done_" + it.mpesa.code }) { det ->
+                            DetectionRow(
+                                detected = det,
+                                imported = true,
+                                isSelected = false,
+                                onToggle = {}
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -272,95 +319,99 @@ fun SmsScanScreen(
 }
 
 @Composable
-private fun PermissionDeniedView(
-    modifier: Modifier = Modifier,
-    onGrant: () -> Unit
+private fun CenteredMessage(
+    modifier: Modifier,
+    title: String,
+    body: String,
+    actionLabel: String,
+    onAction: () -> Unit
 ) {
     Box(modifier = modifier, contentAlignment = Alignment.Center) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(
-                "SMS permission required",
+                title,
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold
             )
             Spacer(Modifier.height(8.dp))
             Text(
-                "Grant SMS read permission to scan your inbox for M-Pesa messages.",
-                style = MaterialTheme.typography.bodySmall,
+                body,
+                style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Spacer(Modifier.height(16.dp))
-            Button(onClick = onGrant) { Text("Grant permission") }
+            Button(onClick = onAction) { Text(actionLabel) }
         }
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun DetectionRow(
     detected: DetectedPayment,
+    imported: Boolean,
     isSelected: Boolean,
     onToggle: () -> Unit
 ) {
     val mpesa = detected.mpesa
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = if (detected.alreadyImported)
-                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-            else MaterialTheme.colorScheme.surfaceVariant
-        )
-    ) {
+    val content: @Composable () -> Unit = {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(14.dp),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            if (detected.alreadyImported) {
-                AssistChip(
-                    onClick = {},
-                    label = { Text("Already in app", style = MaterialTheme.typography.labelSmall) }
+            if (imported) {
+                Icon(
+                    Icons.Filled.CheckCircle,
+                    contentDescription = "Already in app",
+                    tint = toneColors(Tone.SUCCESS).fg,
+                    modifier = Modifier.padding(horizontal = 12.dp)
                 )
             } else {
-                Checkbox(
-                    checked = isSelected,
-                    onCheckedChange = { onToggle() }
-                )
+                Checkbox(checked = isSelected, onCheckedChange = { onToggle() })
             }
-            Spacer(Modifier.width(8.dp))
+            Spacer(Modifier.width(4.dp))
             Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    formatMoneyScan(mpesa.amount),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary
-                )
-                Text(
-                    mpesa.date.format(DATETIME_FMT),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Text(
-                    "Code: ${mpesa.code}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                mpesa.sender?.let {
+                Row(modifier = Modifier.fillMaxWidth()) {
                     Text(
-                        "From: $it",
+                        formatMoneyScan(mpesa.amount),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = if (imported) MaterialTheme.colorScheme.onSurfaceVariant
+                                else MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.weight(1f)
+                    )
+                    Text(
+                        mpesa.date.format(DATETIME_FMT),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
-                mpesa.account?.let {
-                    Text(
-                        "Account: $it",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
+                Text(
+                    "Code ${mpesa.code}" + (mpesa.sender?.let { "  ·  $it" } ?: ""),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
             }
         }
+    }
+    if (imported) {
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = MaterialTheme.shapes.medium,
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+            )
+        ) { content() }
+    } else {
+        Card(
+            onClick = onToggle,
+            modifier = Modifier.fillMaxWidth(),
+            shape = MaterialTheme.shapes.medium,
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceVariant
+            )
+        ) { content() }
     }
 }

@@ -28,6 +28,7 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
@@ -271,6 +272,14 @@ private fun LoanCardFace(
     val percent = (progress * 100).toInt()
     val days = loan.daysRemaining
 
+    // Count-up and fill animation each time the card appears or the numbers change.
+    val shownBalance = remember { Animatable(0f) }
+    val shownProgress = remember { Animatable(0f) }
+    LaunchedEffect(balance, progress) {
+        launch { shownBalance.animateTo(balance.toFloat(), tween(800)) }
+        launch { shownProgress.animateTo(progress, tween(900)) }
+    }
+
     Column(modifier = modifier.padding(20.dp)) {
         Text(
             loan.title,
@@ -281,7 +290,7 @@ private fun LoanCardFace(
         )
         Spacer(Modifier.height(4.dp))
         Text(
-            formatMoney(balance),
+            formatMoney(shownBalance.value.toDouble()),
             fontSize = 32.sp,
             fontWeight = FontWeight.Bold,
             color = palette.content
@@ -293,7 +302,7 @@ private fun LoanCardFace(
         )
         Spacer(Modifier.height(12.dp))
         LinearProgressIndicator(
-            progress = { progress },
+            progress = { shownProgress.value },
             modifier = Modifier
                 .fillMaxWidth()
                 .height(8.dp),

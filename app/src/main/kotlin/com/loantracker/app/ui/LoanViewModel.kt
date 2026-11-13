@@ -73,7 +73,14 @@ class LoanViewModel(private val repo: LoanRepository) : ViewModel() {
     fun saveLoan(loan: Loan) = viewModelScope.launch { repo.upsertLoan(loan) }
     fun deleteLoan(loan: Loan) = viewModelScope.launch { repo.deleteLoan(loan) }
     fun hideLoan(id: String, hidden: Boolean) = viewModelScope.launch { repo.setLoanHidden(id, hidden) }
-    fun addPayment(payment: Payment) = viewModelScope.launch {
+    fun addPayment(payment: Payment) = viewModelScope.launch { recordPayment(payment) }
+
+    /** Add several payments one after another (SMS import), so completion is detected reliably. */
+    fun addPayments(payments: List<Payment>) = viewModelScope.launch {
+        payments.forEach { recordPayment(it) }
+    }
+
+    private suspend fun recordPayment(payment: Payment) {
         val loan = repo.getLoan(payment.loanId)
         val before = repo.totalPaidOnce(payment.loanId)
         repo.addPayment(payment)
