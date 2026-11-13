@@ -14,12 +14,14 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.loantracker.app.LoanWidgetProvider
 import com.loantracker.app.data.DailyPaymentCalculator
 import com.loantracker.app.data.DailyPaymentRecommendation
 import com.loantracker.app.data.Loan
@@ -57,6 +59,12 @@ fun DashboardScreen(
     val frontIndex = activeLoans.indexOfFirst { it.id == selectedId }.let { if (it < 0) 0 else it }
     val selected = activeLoans.getOrNull(frontIndex)
     val selectedPaid = selected?.let { paidByLoan[it.id] } ?: 0.0
+    val appContext = LocalContext.current
+    LaunchedEffect(selected?.id, selectedPaid, activeLoans.size, completedLoans.size) {
+        // Mirror the front card on the home-screen widget.
+        selected?.let { LoanWidgetProvider.setFrontLoan(appContext, it.id) }
+            ?: LoanWidgetProvider.refresh(appContext)
+    }
     val selectedRecommendation = remember(selected, selectedPaid) {
         selected?.let { DailyPaymentCalculator.calculate(it, selectedPaid) }
     }
