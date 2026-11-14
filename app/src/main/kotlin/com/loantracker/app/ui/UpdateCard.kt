@@ -13,6 +13,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -23,8 +24,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Download
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -103,7 +102,8 @@ fun UpdateCardDialog(
         Card(
             modifier = Modifier.padding(horizontal = 20.dp).widthIn(max = 400.dp).fillMaxWidth(),
             shape = RoundedCornerShape(28.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh)
+            colors = CardDefaults.cardColors(containerColor = if (isDarkTheme()) Color(0xFF16201B) else Color.White),
+            elevation = CardDefaults.cardElevation(defaultElevation = 16.dp)
         ) {
             Column {
                 Box(modifier = Modifier.fillMaxWidth().height(190.dp)) {
@@ -124,7 +124,7 @@ fun UpdateCardDialog(
                         )
                     }
                 }
-                Column(modifier = Modifier.padding(start = 18.dp, end = 18.dp, top = 16.dp, bottom = 10.dp)) {
+                Column(modifier = Modifier.padding(start = 18.dp, end = 18.dp, top = 16.dp, bottom = 12.dp)) {
                     if (failed != null) {
                         Text(failed.message, style = MaterialTheme.typography.bodyMedium)
                     } else {
@@ -145,23 +145,23 @@ fun UpdateCardDialog(
                     when {
                         failed != null -> {
                             UpdateButton("Retry", null) { controller.startDownload(info) }
-                            CenterActions { TextButton(onClick = { controller.dismiss() }) { Tiny("Close") } }
+                            CenterActions { TextButton(contentPadding = PaddingValues(8.dp), onClick = { controller.dismiss() }) { Tiny("Close") } }
                         }
                         downloading || ready -> {
                             ProgressBlock(progress, ready, sizeMb)
                             if (ready) {
                                 Spacer(Modifier.height(12.dp))
                                 UpdateButton("Install", null, onInstall)
-                                CenterActions { TextButton(onClick = { controller.dismiss() }) { Tiny("Later") } }
+                                CenterActions { TextButton(contentPadding = PaddingValues(8.dp), onClick = { controller.dismiss() }) { Tiny("Later") } }
                             } else {
-                                CenterActions { TextButton(onClick = { controller.cancel() }) { Tiny("Cancel") } }
+                                CenterActions { TextButton(contentPadding = PaddingValues(8.dp), onClick = { controller.cancel() }) { Tiny("Cancel") } }
                             }
                         }
                         else -> {
-                            UpdateButton("Update now", Icons.Filled.Download) { controller.startDownload(info) }
+                            UpdateButton("↓ Update now", null) { controller.startDownload(info) }
                             CenterActions {
-                                TextButton(onClick = { controller.dismiss() }) { Tiny("Later") }
-                                TextButton(onClick = { controller.skip(info) }) { Tiny("Skip this version") }
+                                TextButton(contentPadding = PaddingValues(8.dp), onClick = { controller.dismiss() }) { Tiny("Later") }
+                                TextButton(contentPadding = PaddingValues(8.dp), onClick = { controller.skip(info) }) { Tiny("Skip this version") }
                             }
                         }
                     }
@@ -183,7 +183,8 @@ private fun changelog(notes: String): Pair<List<String>, Int> {
 private fun Bullet(text: String) {
     Row(modifier = Modifier.padding(vertical = 3.dp), verticalAlignment = Alignment.Top) {
         Box(
-            modifier = Modifier.padding(top = 6.dp, end = 9.dp).size(7.dp).clip(CircleShape).background(BtnEnd)
+            modifier = Modifier.padding(top = 6.dp, end = 9.dp).size(7.dp).clip(CircleShape)
+                .background(MaterialTheme.colorScheme.tertiary)
         )
         Text(
             text,
@@ -218,8 +219,7 @@ private fun ProgressBlock(progress: Float, ready: Boolean, sizeMb: Double) {
                 Text(
                     "%.1f of %.1f MB".format(sizeMb * progress, sizeMb),
                     fontSize = 12.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    fontWeight = FontWeight.Bold
                 )
             }
         }
@@ -229,7 +229,7 @@ private fun ProgressBlock(progress: Float, ready: Boolean, sizeMb: Double) {
                 .fillMaxWidth()
                 .height(6.dp)
                 .clip(RoundedCornerShape(6.dp))
-                .background(MaterialTheme.colorScheme.outlineVariant)
+                .background(if (isDarkTheme()) Color(0xFF26332C) else Color(0xFFDDD8CB))
         ) {
             Box(
                 modifier = Modifier
@@ -290,7 +290,7 @@ private fun UpdateHero(ringProgress: Float, done: Boolean, modifier: Modifier = 
         val h = size.height
         drawRect(
             Brush.linearGradient(
-                listOf(Color(0xFF052E21), Color(0xFF0B6B4B), Color(0xFF159A6E)),
+                0f to Color(0xFF052E21), 0.55f to Color(0xFF0B6B4B), 1f to Color(0xFF159A6E),
                 start = Offset.Zero,
                 end = Offset(w, h)
             )
@@ -340,7 +340,7 @@ private fun UpdateHero(ringProgress: Float, done: Boolean, modifier: Modifier = 
             Color(0xFFC98A12) to 0f, Color(0xFFFFC24B) to -7f,
             Color(0xFFC98A12) to -14f, Color(0xFFFFD36E) to -21f
         ).forEach { (col, dy) ->
-            drawOval(col, Offset(cx - cw, h - 26.dp.toPx() + dy.dp.toPx()), Size(cw * 2, ch * 2))
+            drawOval(col, Offset(cx - cw, h - 26.dp.toPx() - ch + dy.dp.toPx()), Size(cw * 2, ch * 2))
         }
         listOf(
             Triple(0.55f, 0.16f, HeroGoldSoft), Triple(0.94f, 0.14f, HeroGoldSoft),

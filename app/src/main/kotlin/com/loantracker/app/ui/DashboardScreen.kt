@@ -99,7 +99,24 @@ fun DashboardScreen(
         contentWindowInsets = WindowInsets.statusBars,
         topBar = {
             TopAppBar(
-                title = { Text("Loan Tracker") },
+                title = {
+                    Column {
+                        Text("Loan Tracker")
+                        if (activeLoans.isNotEmpty()) {
+                            val outstanding = activeLoans.sumOf {
+                                (it.totalPayable - (paidByLoan[it.id] ?: 0.0)).coerceAtLeast(0.0)
+                            }
+                            Text(
+                                "${activeLoans.size} active · ${formatMoney(outstanding)} outstanding",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                    }
+                },
                 actions = {
                     AnimatedVisibility(
                         visible = showMini && selected != null,
