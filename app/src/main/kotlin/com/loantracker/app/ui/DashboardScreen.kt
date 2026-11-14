@@ -13,6 +13,14 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
+import kotlinx.coroutines.launch
+import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.graphics.Brush
@@ -74,12 +82,42 @@ fun DashboardScreen(
     }
     val (currentStreak, bestStreak) = computeStreak(allPayments)
 
+    val listState = rememberLazyListState()
+    val scope = rememberCoroutineScope()
+    // True once the full loan card has mostly scrolled out of view; the top-bar chip stands in for it.
+    val showMini by remember {
+        derivedStateOf {
+            val stack = listState.layoutInfo.visibleItemsInfo.firstOrNull { it.key == "loan_stack" }
+            if (stack == null) listState.firstVisibleItemIndex > 0
+            else stack.offset + stack.size < stack.size * 0.4f
+        }
+    }
+
     Scaffold(
         modifier = Modifier.appBackdrop(),
         containerColor = Color.Transparent,
         contentWindowInsets = WindowInsets.statusBars,
         topBar = {
-            TopAppBar(title = { Text("Loan Tracker") }, colors = appBarColors())
+            TopAppBar(
+                title = { Text("Loan Tracker") },
+                actions = {
+                    AnimatedVisibility(
+                        visible = showMini && selected != null,
+                        enter = fadeIn() + scaleIn(initialScale = 0.8f, transformOrigin = TransformOrigin(1f, 0.5f)),
+                        exit = fadeOut() + scaleOut(targetScale = 0.8f, transformOrigin = TransformOrigin(1f, 0.5f))
+                    ) {
+                        selected?.let { loan ->
+                            MiniLoanChip(
+                                loan = loan,
+                                paid = selectedPaid,
+                                paletteIndex = frontIndex,
+                                onClick = { scope.launch { listState.animateScrollToItem(0) } }
+                            )
+                        }
+                    }
+                },
+                colors = appBarColors()
+            )
         },
         floatingActionButton = {
             FloatingActionButton(
@@ -118,6 +156,7 @@ fun DashboardScreen(
         }
 
         LazyColumn(
+            state = listState,
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
