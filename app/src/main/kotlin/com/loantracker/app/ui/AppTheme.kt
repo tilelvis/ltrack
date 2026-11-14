@@ -7,7 +7,12 @@ import androidx.compose.material3.TopAppBarColors
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
+import androidx.compose.foundation.background
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import com.loantracker.app.data.Severity
@@ -22,23 +27,23 @@ import com.loantracker.app.data.Severity
  */
 fun loanTrackerColorScheme(dark: Boolean): ColorScheme =
     if (dark) darkColorScheme(
-        primary = Color(0xFF6FCFA0),
+        primary = Color(0xFF3EDC9C),
         onPrimary = Color(0xFF06271A),
-        primaryContainer = Color(0xFF1F4A37),
+        primaryContainer = Color(0xFF124A36),
         onPrimaryContainer = Color(0xFFC9EEDA),
         secondary = Color(0xFFB3CBBD),
         onSecondary = Color(0xFF1E3329),
         secondaryContainer = Color(0xFF33493D),
         onSecondaryContainer = Color(0xFFD5E8DC),
-        tertiary = Color(0xFFFF8A5B),
+        tertiary = Color(0xFFFF7A4D),
         onTertiary = Color(0xFF3A1200),
         tertiaryContainer = Color(0xFF5A2A14),
         onTertiaryContainer = Color(0xFFFFD9CB),
-        background = Color(0xFF0F1511),
+        background = Color(0xFF0A100D),
         onBackground = Color(0xFFE0E6E2),
-        surface = Color(0xFF0F1511),
+        surface = Color(0xFF0A100D),
         onSurface = Color(0xFFE0E6E2),
-        surfaceVariant = Color(0xFF26322B),
+        surfaceVariant = Color(0xFF1E2923),
         onSurfaceVariant = Color(0xFFB4C0B8),
         outline = Color(0xFF85938A),
         outlineVariant = Color(0xFF3B4841),
@@ -46,45 +51,45 @@ fun loanTrackerColorScheme(dark: Boolean): ColorScheme =
         onError = Color(0xFF4A0F0B),
         errorContainer = Color(0xFF6B2520),
         onErrorContainer = Color(0xFFFAD4D0),
-        surfaceDim = Color(0xFF0F1511),
+        surfaceDim = Color(0xFF0A100D),
         surfaceBright = Color(0xFF2F3A33),
-        surfaceContainerLowest = Color(0xFF0A0F0C),
-        surfaceContainerLow = Color(0xFF161D19),
-        surfaceContainer = Color(0xFF1A2420),
-        surfaceContainerHigh = Color(0xFF222D27),
-        surfaceContainerHighest = Color(0xFF2B372F)
+        surfaceContainerLowest = Color(0xFF070B09),
+        surfaceContainerLow = Color(0xFF111915),
+        surfaceContainer = Color(0xFF16201B),
+        surfaceContainerHigh = Color(0xFF1E2923),
+        surfaceContainerHighest = Color(0xFF26332C)
     ) else lightColorScheme(
-        primary = Color(0xFF2E7D5B),
+        primary = Color(0xFF0B6B4B),
         onPrimary = Color(0xFFFFFFFF),
-        primaryContainer = Color(0xFFD3EADB),
-        onPrimaryContainer = Color(0xFF10392A),
+        primaryContainer = Color(0xFFD6F0E2),
+        onPrimaryContainer = Color(0xFF073D2B),
         secondary = Color(0xFF4F6558),
         onSecondary = Color(0xFFFFFFFF),
         secondaryContainer = Color(0xFFDCE9E0),
         onSecondaryContainer = Color(0xFF1A2D23),
-        tertiary = Color(0xFFF25C2A),
+        tertiary = Color(0xFFFF5A2C),
         onTertiary = Color(0xFFFFFFFF),
-        tertiaryContainer = Color(0xFFFFE1D6),
+        tertiaryContainer = Color(0xFFFFE4D9),
         onTertiaryContainer = Color(0xFF4A1A08),
-        background = Color(0xFFF4F7F4),
+        background = Color(0xFFFAF8F3),
         onBackground = Color(0xFF1C2420),
-        surface = Color(0xFFF4F7F4),
+        surface = Color(0xFFFAF8F3),
         onSurface = Color(0xFF1C2420),
-        surfaceVariant = Color(0xFFE6EDE8),
-        onSurfaceVariant = Color(0xFF46544C),
+        surfaceVariant = Color(0xFFF0ECE3),
+        onSurfaceVariant = Color(0xFF4E5650),
         outline = Color(0xFF7A8A80),
-        outlineVariant = Color(0xFFCBD6CE),
+        outlineVariant = Color(0xFFDDD8CB),
         error = Color(0xFFB3392F),
         onError = Color(0xFFFFFFFF),
         errorContainer = Color(0xFFF8E1DE),
         onErrorContainer = Color(0xFF5A1511),
-        surfaceDim = Color(0xFFE1E7E2),
-        surfaceBright = Color(0xFFF4F7F4),
+        surfaceDim = Color(0xFFE8E4DA),
+        surfaceBright = Color(0xFFFAF8F3),
         surfaceContainerLowest = Color(0xFFFFFFFF),
-        surfaceContainerLow = Color(0xFFEFF4F0),
-        surfaceContainer = Color(0xFFE9F0EB),
-        surfaceContainerHigh = Color(0xFFE3EBE5),
-        surfaceContainerHighest = Color(0xFFDDE6DF)
+        surfaceContainerLow = Color(0xFFF7F5EE),
+        surfaceContainer = Color(0xFFF3F0E8),
+        surfaceContainerHigh = Color(0xFFEDE9DF),
+        surfaceContainerHighest = Color(0xFFE6E2D7)
     )
 
 /**
@@ -104,9 +109,29 @@ fun isDarkTheme(): Boolean = MaterialTheme.colorScheme.background.luminance() < 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun appBarColors(): TopAppBarColors = TopAppBarDefaults.topAppBarColors(
-    containerColor = MaterialTheme.colorScheme.background,
-    scrolledContainerColor = MaterialTheme.colorScheme.background
+    containerColor = Color.Transparent,
+    scrolledContainerColor = Color.Transparent
 )
+
+/** Win / celebration gold. */
+val GoldAccent = Color(0xFFFFC24B)
+
+/** Hot coral gradient used for the primary call to action. */
+val CoralBrush: Brush
+    get() = Brush.linearGradient(listOf(Color(0xFFFF5A2C), Color(0xFFFF8A4A)))
+
+/** Page background plus soft emerald and coral glows so the surface has depth, not a flat fill. */
+@Composable
+fun Modifier.appBackdrop(): Modifier {
+    val dark = isDarkTheme()
+    val base = MaterialTheme.colorScheme.background
+    val emerald = if (dark) Color(0xFF1FBF8A).copy(alpha = 0.20f) else Color(0xFF159A6E).copy(alpha = 0.10f)
+    val coral = if (dark) Color(0xFFFF6A3D).copy(alpha = 0.14f) else Color(0xFFFF5A2C).copy(alpha = 0.07f)
+    return this.background(base).drawBehind {
+        drawRect(Brush.radialGradient(listOf(emerald, Color.Transparent), Offset(size.width * 0.1f, 0f), size.width * 0.9f))
+        drawRect(Brush.radialGradient(listOf(coral, Color.Transparent), Offset(size.width, size.height * 0.85f), size.width * 0.8f))
+    }
+}
 
 enum class Tone { SUCCESS, CAUTION, ELEVATED, DANGER, NEUTRAL }
 

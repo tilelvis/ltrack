@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -38,6 +39,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
@@ -58,20 +60,29 @@ import com.loantracker.app.data.Loan
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
-/** Container / text / accent colors for one loan card. Each loan keeps its own color. */
-data class CardPalette(val container: Color, val content: Color, val accent: Color)
+/** Gradient / text / accent colors for one loan card. Each loan keeps its own color. */
+data class CardPalette(val brush: Brush, val container: Color, val content: Color, val accent: Color)
+
+private fun gradientPalette(a: Long, b: Long, accent: Long) =
+    CardPalette(
+        brush = Brush.linearGradient(listOf(Color(a), Color(b))),
+        container = Color(b),
+        content = Color.White,
+        accent = Color(accent)
+    )
 
 @Composable
 fun loanCardPalette(index: Int): CardPalette {
-    val s = MaterialTheme.colorScheme
     val dark = isDarkTheme()
     return when (index % 4) {
-        0 -> CardPalette(s.primaryContainer, s.onPrimaryContainer, s.primary)
-        1 -> if (dark) CardPalette(Color(0xFF203645), Color(0xFFCFE5F3), Color(0xFF8CC4E6))
-             else CardPalette(Color(0xFFDCEBF5), Color(0xFF12303F), Color(0xFF2F6F96))
-        2 -> CardPalette(s.tertiaryContainer, s.onTertiaryContainer, s.tertiary)
-        else -> if (dark) CardPalette(Color(0xFF2C2840), Color(0xFFE2DDF5), Color(0xFFB3A5F0))
-                else CardPalette(Color(0xFFE6E1F4), Color(0xFF231A45), Color(0xFF6C55C9))
+        0 -> if (dark) gradientPalette(0xFF0B5A40, 0xFF12805C, 0xFF9BF0C8)   // Emerald
+             else gradientPalette(0xFF0B6B4B, 0xFF159A6E, 0xFFB5F5D6)
+        1 -> if (dark) gradientPalette(0xFF0B4A70, 0xFF1F7FA8, 0xFFBFE9FF)   // Ocean
+             else gradientPalette(0xFF0B5C8A, 0xFF2A8FBD, 0xFFCDEEFF)
+        2 -> if (dark) gradientPalette(0xFFC23A17, 0xFFDE6A28, 0xFFFFE6A8)   // Sunset
+             else gradientPalette(0xFFD9411A, 0xFFE9702A, 0xFFFFE9B0)
+        else -> if (dark) gradientPalette(0xFF4A32B0, 0xFF6C48E0, 0xFFE4D9FF) // Orchid
+                else gradientPalette(0xFF5B3FD0, 0xFF7B58F0, 0xFFE9E0FF)
     }
 }
 
@@ -233,9 +244,10 @@ private fun BoxScope.StackCard(
             .clickable(onClick = if (isFront) onOpen else onSelectSelf),
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(containerColor = palette.container),
-        border = BorderStroke(1.dp, palette.content.copy(alpha = 0.10f))
+        elevation = CardDefaults.cardElevation(defaultElevation = if (isFront) 10.dp else 3.dp),
+        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.18f))
     ) {
-        Box(modifier = Modifier.fillMaxWidth()) {
+        Box(modifier = Modifier.fillMaxSize().background(palette.brush)) {
             LoanCardFace(
                 loan = loan,
                 paid = paid,
@@ -291,8 +303,8 @@ private fun LoanCardFace(
         Spacer(Modifier.height(4.dp))
         Text(
             formatMoney(shownBalance.value.toDouble()),
-            fontSize = 32.sp,
-            fontWeight = FontWeight.Bold,
+            fontSize = 36.sp,
+            fontWeight = FontWeight.ExtraBold,
             color = palette.content
         )
         Text(
@@ -307,7 +319,7 @@ private fun LoanCardFace(
                 .fillMaxWidth()
                 .height(8.dp),
             color = palette.accent,
-            trackColor = palette.content.copy(alpha = 0.15f)
+            trackColor = Color.White.copy(alpha = 0.25f)
         )
         Spacer(Modifier.height(8.dp))
         Row(
@@ -323,7 +335,7 @@ private fun LoanCardFace(
             Text(
                 daysLeftText(days),
                 style = MaterialTheme.typography.bodyMedium,
-                color = if (days <= 0) MaterialTheme.colorScheme.error else palette.content
+                color = if (days <= 0) GoldAccent else palette.content
             )
         }
     }

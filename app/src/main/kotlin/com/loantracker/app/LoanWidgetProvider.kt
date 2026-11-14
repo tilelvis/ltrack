@@ -97,7 +97,7 @@ class LoanWidgetProvider : AppWidgetProvider() {
                 views.setTextViewText(R.id.widget_due, daysText)
                 views.setTextColor(
                     R.id.widget_due,
-                    if (days <= 0L) Color.parseColor("#FF8A5B") else Color.WHITE
+                    if (days <= 0L) Color.parseColor("#FFC24B") else Color.WHITE
                 )
                 if (active.size > 1) {
                     val position = active.indexOfFirst { it.id == front.id } + 1

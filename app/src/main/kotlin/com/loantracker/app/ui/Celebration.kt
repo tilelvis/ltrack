@@ -32,6 +32,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.graphicsLayer
@@ -165,8 +166,8 @@ private fun ConfettiTrophy() {
     val palette = listOf(
         scheme.primary,
         scheme.tertiary,
-        scheme.secondary,
-        toneColors(Tone.ELEVATED).fg
+        GoldAccent,
+        Color(0xFF7B58F0)
     )
     val particles = remember {
         List(28) {
@@ -210,7 +211,7 @@ private fun ConfettiTrophy() {
         Icon(
             Icons.Filled.EmojiEvents,
             contentDescription = null,
-            tint = toneColors(Tone.CAUTION).fg,
+            tint = GoldAccent,
             modifier = Modifier
                 .size(68.dp)
                 .graphicsLayer {

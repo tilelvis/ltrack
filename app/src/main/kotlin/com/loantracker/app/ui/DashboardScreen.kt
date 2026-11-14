@@ -13,6 +13,14 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.material3.FloatingActionButtonDefaults
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.foundation.background
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.Animatable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.graphics.Color
@@ -71,6 +79,8 @@ fun DashboardScreen(
     val (currentStreak, bestStreak) = computeStreak(allPayments)
 
     Scaffold(
+        modifier = Modifier.appBackdrop(),
+        containerColor = Color.Transparent,
         contentWindowInsets = WindowInsets.statusBars,
         topBar = {
             TopAppBar(title = { Text("Loan Tracker") }, colors = appBarColors())
@@ -79,7 +89,8 @@ fun DashboardScreen(
             FloatingActionButton(
                 onClick = onAddLoan,
                 containerColor = MaterialTheme.colorScheme.tertiary,
-                contentColor = MaterialTheme.colorScheme.onTertiary
+                contentColor = MaterialTheme.colorScheme.onTertiary,
+                elevation = FloatingActionButtonDefaults.elevation(defaultElevation = 8.dp)
             ) {
                 Icon(Icons.Filled.Add, contentDescription = "Add loan")
             }
@@ -138,7 +149,9 @@ fun DashboardScreen(
                     }
                 }
                 selectedRecommendation?.let { rec ->
-                    item(key = "loan_recommendation") { RecommendationCard(rec) }
+                    item(key = "loan_recommendation") {
+                        RecommendationCard(rec, onClick = { selected?.let { onOpenLoan(it.id) } })
+                    }
                 }
                 item(key = "streak") {
                     StreakCard(currentStreak = currentStreak, bestStreak = bestStreak)
@@ -290,35 +303,45 @@ private fun CompletedLoanRow(loan: Loan, note: String, onClick: () -> Unit) {
 }
 
 @Composable
-private fun RecommendationCard(rec: DailyPaymentRecommendation) {
-    val color = severityColor(rec.severity)
+private fun RecommendationCard(rec: DailyPaymentRecommendation, onClick: () -> Unit) {
+    val paid = rec.severity == Severity.PAID
+    val brush = if (paid) Brush.linearGradient(listOf(GoldAccent, Color(0xFFFFE08A))) else CoralBrush
+    val fg = if (paid) Color(0xFF3A2A00) else Color.White
+    val shownAmount = remember { Animatable(0f) }
+    LaunchedEffect(rec.dailyAmount) { shownAmount.animateTo(rec.dailyAmount.toFloat(), tween(700)) }
+    val haptic = LocalHapticFeedback.current
     Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = severityContainer(rec.severity)
-        )
+        modifier = Modifier.fillMaxWidth().clickable {
+            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+            onClick()
+        },
+        shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.Transparent),
+        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
+                .background(brush)
+                .padding(horizontal = 18.dp, vertical = 16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    if (rec.severity == Severity.PAID) "Loan repaid!"
-                    else "Pay ${formatMoney(rec.dailyAmount)} today",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = color
+                    if (paid) "Loan repaid!" else "Pay ${formatMoney(shownAmount.value.toDouble())} today",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = fg
                 )
                 Spacer(Modifier.height(2.dp))
                 Text(
                     rec.message,
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurface
+                    color = fg.copy(alpha = 0.92f)
                 )
+            }
+            if (!paid) {
+                Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = "Open loan", tint = fg)
             }
         }
     }
