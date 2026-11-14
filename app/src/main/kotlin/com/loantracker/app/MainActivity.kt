@@ -35,6 +35,8 @@ import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavGraph.Companion.findStartDestination
+import androidx.navigation.NavType
+import androidx.navigation.navArgument
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
@@ -169,7 +171,8 @@ private fun AppNav() {
                 DashboardScreen(
                     vm = vm,
                     onAddLoan = { nav.navigate("addLoan") },
-                    onOpenLoan = { id -> nav.navigate("loanDetail/$id") }
+                    onOpenLoan = { id -> nav.navigate("loanDetail/$id") },
+                    onPayNow = { id, amount -> nav.navigate("addPayment/$id?amount=${amount.toLong()}") }
                 )
             }
             composable("history") {
@@ -198,9 +201,17 @@ private fun AppNav() {
                     onSmsScan = { id -> nav.navigate("smsScan/$id") }
                 )
             }
-            composable("addPayment/{loanId}") { entry ->
+            composable(
+                "addPayment/{loanId}?amount={amount}",
+                arguments = listOf(navArgument("amount") { type = NavType.StringType; nullable = true; defaultValue = null })
+            ) { entry ->
                 val loanId = entry.arguments?.getString("loanId").orEmpty()
-                AddPaymentScreen(loanId = loanId, vm = vm, onBack = { nav.popBackStack() })
+                AddPaymentScreen(
+                    loanId = loanId,
+                    vm = vm,
+                    onBack = { nav.popBackStack() },
+                    initialAmount = entry.arguments?.getString("amount")
+                )
             }
             composable("mpesaImport/{loanId}") { entry ->
                 val loanId = entry.arguments?.getString("loanId").orEmpty()

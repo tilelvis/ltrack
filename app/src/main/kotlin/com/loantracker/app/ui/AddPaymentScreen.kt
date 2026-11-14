@@ -27,9 +27,10 @@ private val DATE_FMT: DateTimeFormatter = DateTimeFormatter.ofPattern("dd MMM yy
 fun AddPaymentScreen(
     loanId: String,
     vm: LoanViewModel,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    initialAmount: String? = null
 ) {
-    var amount by remember { mutableStateOf("") }
+    var amount by remember { mutableStateOf(initialAmount.orEmpty()) }
     var mpesaCode by remember { mutableStateOf("") }
     var notes by remember { mutableStateOf("") }
     var date by remember { mutableStateOf(LocalDate.now()) }

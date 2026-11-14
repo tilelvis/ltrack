@@ -30,8 +30,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.loantracker.app.LoanWidgetProvider
-import com.loantracker.app.data.DailyPaymentCalculator
-import com.loantracker.app.data.DailyPaymentRecommendation
 import com.loantracker.app.data.Loan
 import com.loantracker.app.data.Payment
 import com.loantracker.app.data.Severity
@@ -47,7 +45,8 @@ fun formatMoney(amount: Double): String = "KSh %,.0f".format(amount)
 fun DashboardScreen(
     vm: LoanViewModel,
     onAddLoan: () -> Unit,
-    onOpenLoan: (String) -> Unit
+    onOpenLoan: (String) -> Unit,
+    onPayNow: (String, Double) -> Unit
 ) {
     val loans by vm.loans.collectAsStateWithLifecycle()
     val allPayments by vm.allPayments.collectAsStateWithLifecycle()
@@ -72,9 +71,6 @@ fun DashboardScreen(
         // Mirror the front card on the home-screen widget.
         selected?.let { LoanWidgetProvider.setFrontLoan(appContext, it.id) }
             ?: LoanWidgetProvider.refresh(appContext)
-    }
-    val selectedRecommendation = remember(selected, selectedPaid) {
-        selected?.let { DailyPaymentCalculator.calculate(it, selectedPaid) }
     }
     val (currentStreak, bestStreak) = computeStreak(allPayments)
 
@@ -148,10 +144,13 @@ fun DashboardScreen(
                         )
                     }
                 }
-                selectedRecommendation?.let { rec ->
-                    item(key = "loan_recommendation") {
-                        RecommendationCard(rec, onClick = { selected?.let { onOpenLoan(it.id) } })
-                    }
+                item(key = "loan_recommendation") {
+                    PayTodayCard(
+                        loan = selected,
+                        paid = selectedPaid,
+                        payments = allPayments,
+                        onPayNow = { amount -> onPayNow(selected.id, amount) }
+                    )
                 }
                 item(key = "streak") {
                     StreakCard(currentStreak = currentStreak, bestStreak = bestStreak)
@@ -298,51 +297,6 @@ private fun CompletedLoanRow(loan: Loan, note: String, onClick: () -> Unit) {
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
-        }
-    }
-}
-
-@Composable
-private fun RecommendationCard(rec: DailyPaymentRecommendation, onClick: () -> Unit) {
-    val paid = rec.severity == Severity.PAID
-    val brush = if (paid) Brush.linearGradient(listOf(GoldAccent, Color(0xFFFFE08A))) else CoralBrush
-    val fg = if (paid) Color(0xFF3A2A00) else Color.White
-    val shownAmount = remember { Animatable(0f) }
-    LaunchedEffect(rec.dailyAmount) { shownAmount.animateTo(rec.dailyAmount.toFloat(), tween(700)) }
-    val haptic = LocalHapticFeedback.current
-    Card(
-        modifier = Modifier.fillMaxWidth().clickable {
-            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-            onClick()
-        },
-        shape = RoundedCornerShape(18.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.Transparent),
-        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(brush)
-                .padding(horizontal = 18.dp, vertical = 16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    if (paid) "Loan repaid!" else "Pay ${formatMoney(shownAmount.value.toDouble())} today",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.ExtraBold,
-                    color = fg
-                )
-                Spacer(Modifier.height(2.dp))
-                Text(
-                    rec.message,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = fg.copy(alpha = 0.92f)
-                )
-            }
-            if (!paid) {
-                Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = "Open loan", tint = fg)
-            }
         }
     }
 }
