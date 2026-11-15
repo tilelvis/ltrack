@@ -73,11 +73,16 @@ fun AddLoanScreen(vm: LoanViewModel, onBack: () -> Unit) {
     var repaidEpoch by rememberSaveable { mutableStateOf(0L) }  // 0 = default date
     var showRepaidPicker by rememberSaveable { mutableStateOf(false) }
     var lenderMenuOpen by remember { mutableStateOf(false) }
+    var periodIdx by rememberSaveable { mutableStateOf(1) }  // 0 = 2 weeks, 1 = 1 month, 2 = 3 months
 
-    // A loan is always one month: only the start date is chosen.
+    // The start date and the repayment period are chosen; the due date follows from them.
     val today = remember { LocalDate.now() }
     val startDate = LocalDate.ofEpochDay(startEpoch)
-    val dueDate = startDate.plusMonths(1)
+    val dueDate = when (periodIdx) {
+        0 -> startDate.plusWeeks(2)
+        2 -> startDate.plusMonths(3)
+        else -> startDate.plusMonths(1)
+    }
     val durationDays = ChronoUnit.DAYS.between(startDate, dueDate) + 1
 
     // Past loans: if the month is already over, assume it was repaid (the user can switch it off).
@@ -256,10 +261,20 @@ fun AddLoanScreen(vm: LoanViewModel, onBack: () -> Unit) {
                     label = { "$it%" },
                     onSelect = { rate = it }
                 )
+                if (rate > 0 && amount > 0) {
+                    val periodDays = ChronoUnit.DAYS.between(startDate, dueDate).coerceAtLeast(1L)
+                    val perMonth = rate * 30.0 / periodDays
+                    Text(
+                        "Costs KSh $rate for every KSh 100 you borrow, about ${"%.0f".format(perMonth)}% a month. " +
+                            "Interest KSh ${"%,.0f".format(interestAmount)}, total KSh ${"%,.0f".format(totalPayable)}.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
 
             // ---- Start date (due date is always one month later)
-            FormSection("Start date") {
+            FormSection("Start date and period") {
                 val isToday = startDate == today
                 val isYesterday = startDate == today.minusDays(1)
                 Row(
@@ -294,8 +309,14 @@ fun AddLoanScreen(vm: LoanViewModel, onBack: () -> Unit) {
                         }
                     )
                 }
+                ChipRow(
+                    options = listOf(0, 1, 2),
+                    selected = periodIdx,
+                    label = { PERIOD_LABELS[it] },
+                    onSelect = { periodIdx = it }
+                )
                 Text(
-                    "Due ${dueDate.format(DISPLAY_FMT)} · 1 month ($durationDays days)",
+                    "Due ${dueDate.format(DISPLAY_FMT)} · ${PERIOD_LABELS[periodIdx]} ($durationDays days)",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -614,6 +635,8 @@ private fun SliderStepper(
         }
     }
 }
+
+private val PERIOD_LABELS = listOf("2 weeks", "1 month", "3 months")
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

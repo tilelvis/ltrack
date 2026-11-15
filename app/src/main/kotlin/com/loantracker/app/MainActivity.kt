@@ -1,11 +1,16 @@
 package com.loantracker.app
 
+import android.Manifest
+import android.content.pm.PackageManager
 import android.graphics.Color as AndroidColor
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.padding
@@ -42,6 +47,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.loantracker.app.services.NotificationService
+import com.loantracker.app.services.ReminderScheduler
 import com.loantracker.app.services.ThemeMode
 import com.loantracker.app.services.ThemeService
 import com.loantracker.app.services.UpdateController
@@ -63,9 +69,22 @@ private val DefaultLightScrim = 0xE6FFFFFF.toInt()
 private val DefaultDarkScrim = 0x801B1B1B.toInt()
 
 class MainActivity : ComponentActivity() {
+    private val notificationPermission =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+            if (granted) ReminderScheduler.ensureScheduled(this)
+        }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         NotificationService.createChannels(this)
+        // Android 13+ asks before any notification can show; the 8 am and 5 pm reminders need it.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) !=
+            PackageManager.PERMISSION_GRANTED
+        ) {
+            notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
+        ReminderScheduler.ensureScheduled(this)
         setContent {
             val context = LocalContext.current
             val themeMode by remember { ThemeService.observe(context) }

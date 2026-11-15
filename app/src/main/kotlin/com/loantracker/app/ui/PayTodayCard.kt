@@ -44,6 +44,7 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Fill
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -53,6 +54,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.loantracker.app.data.Loan
 import com.loantracker.app.data.Payment
+import com.loantracker.app.services.PenaltyPrefs
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -70,9 +72,6 @@ private val HeroBottom = Color(0xFFE0561F)
 private val HeroGold = Color(0xFFFFE08A)
 private val PanelDark = Color.Black.copy(alpha = 0.28f)
 
-/** Late penalty assumption until a per-lender rate is stored. */
-private const val LATE_PENALTY_PERCENT = 5.0
-
 private data class PayOption(val label: String, val amount: Double)
 
 /**
@@ -88,6 +87,8 @@ fun PayTodayCard(
     onPayNow: (Double) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
+    val penaltyPct = remember { PenaltyPrefs.get(context) }
     val balance = (loan.totalPayable - paid).coerceAtLeast(0.0)
     val daysLeft = loan.daysRemaining
     val days = daysLeft.coerceAtLeast(1L)
@@ -110,7 +111,7 @@ fun PayTodayCard(
     val after = (balance - chosen).coerceAtLeast(0.0)
     val tomorrow = if (days > 1) ceil(balance / (days - 1)) else 0.0
     val newDaily = if (days > 1) ceil(after / (days - 1)) else 0.0
-    val penalty = balance * LATE_PENALTY_PERCENT / 100.0
+    val penalty = balance * penaltyPct / 100.0
     val repaidAfter = (((paid + chosen) / loan.totalPayable) * 100).toInt().coerceIn(0, 100)
     val dueShort = loan.dueDate.format(DateTimeFormatter.ofPattern("d MMM"))
 
@@ -262,7 +263,8 @@ fun PayTodayCard(
                 Text("Pay ${formatMoney(chosen)} now", fontSize = 17.sp, fontWeight = FontWeight.ExtraBold)
             }
             Text(
-                "Past due, an estimated ${LATE_PENALTY_PERCENT.toInt()}% fee (about ${formatMoney(penalty)}) may apply — your lender’s actual terms win.",
+                if (penaltyPct > 0) "Past due, an estimated ${penaltyPct.toInt()}% fee (about ${formatMoney(penalty)}) may apply — your lender’s actual terms win."
+                else "Late fees aren’t estimated here. You can set one in Settings; your lender’s actual terms win.",
                 modifier = Modifier.padding(top = 10.dp),
                 fontSize = 12.sp,
                 lineHeight = 17.sp,

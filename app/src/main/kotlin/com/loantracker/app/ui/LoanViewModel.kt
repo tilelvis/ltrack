@@ -71,6 +71,8 @@ class LoanViewModel(private val repo: LoanRepository) : ViewModel() {
         }
 
     fun saveLoan(loan: Loan) = viewModelScope.launch { repo.upsertLoan(loan) }
+    /** Edit an existing loan in place (a REPLACE would cascade-delete its payments). */
+    fun updateLoan(loan: Loan) = viewModelScope.launch { repo.updateLoan(loan) }
     fun deleteLoan(loan: Loan) = viewModelScope.launch { repo.deleteLoan(loan) }
     fun hideLoan(id: String, hidden: Boolean) = viewModelScope.launch { repo.setLoanHidden(id, hidden) }
     fun addPayment(payment: Payment) = viewModelScope.launch { recordPayment(payment) }

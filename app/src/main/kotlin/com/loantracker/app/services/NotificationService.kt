@@ -42,54 +42,6 @@ object NotificationService {
         nm.createNotificationChannel(critical)
     }
 
-    fun scheduleDailyReminder(
-        context: Context, hour: Int, minute: Int, slotId: Int,
-        loanTitle: String, amount: String
-    ) {
-        val calendar = Calendar.getInstance().apply {
-            set(Calendar.HOUR_OF_DAY, hour)
-            set(Calendar.MINUTE, minute)
-            set(Calendar.SECOND, 0)
-            if (timeInMillis <= System.currentTimeMillis()) {
-                add(Calendar.DAY_OF_MONTH, 1)
-            }
-        }
-
-        val intent = Intent(context, ReminderReceiver::class.java).apply {
-            action = "com.loantracker.app.REMINDER"
-            putExtra("loan_title", loanTitle)
-            putExtra("amount", amount)
-            putExtra("slot_id", slotId)
-        }
-
-        val pendingIntent = PendingIntent.getBroadcast(
-            context, BASE_REMINDER_ID + slotId, intent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
-
-        val am = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
-        am.setRepeating(
-            AlarmManager.RTC_WAKEUP,
-            calendar.timeInMillis,
-            AlarmManager.INTERVAL_DAY,
-            pendingIntent
-        )
-    }
-
-    fun cancelAllReminders(context: Context) {
-        val am = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
-        for (slotId in 0 until MAX_REMINDERS) {
-            val intent = Intent(context, ReminderReceiver::class.java).apply {
-                action = "com.loantracker.app.REMINDER"
-            }
-            val pendingIntent = PendingIntent.getBroadcast(
-                context, BASE_REMINDER_ID + slotId, intent,
-                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-            )
-            am.cancel(pendingIntent)
-        }
-    }
-
     fun showPaymentImported(context: Context, amount: String, code: String, loanTitle: String) {
         val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         val notif = NotificationCompat.Builder(context, CHANNEL_CRITICAL)
@@ -100,29 +52,5 @@ object NotificationService {
             .setAutoCancel(true)
             .build()
         nm.notify(998, notif)
-    }
-}
-
-class ReminderReceiver : BroadcastReceiver() {
-    override fun onReceive(context: Context, intent: Intent) {
-        val loanTitle = intent.getStringExtra("loan_title") ?: "your loan"
-        val amount = intent.getStringExtra("amount") ?: ""
-
-        val notif = NotificationCompat.Builder(context, "loan_tracker_daily")
-            .setSmallIcon(R.mipmap.ic_launcher)
-            .setContentTitle("Loan Tracker reminder")
-            .setContentText(if (amount.isNotEmpty()) "Pay Ksh $amount for \"$loanTitle\" today." else "Don't forget to pay \"$loanTitle\" today.")
-            .setPriority(NotificationCompat.PRIORITY_HIGH)
-            .setAutoCancel(true)
-            .setContentIntent(PendingIntent.getActivity(
-                context, 0,
-                Intent(context, MainActivity::class.java),
-                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-            ))
-            .build()
-
-        val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        val slotId = intent.getIntExtra("slot_id", 0)
-        nm.notify(1001 + slotId, notif)
     }
 }

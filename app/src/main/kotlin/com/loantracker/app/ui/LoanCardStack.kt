@@ -293,13 +293,19 @@ private fun LoanCardFace(
     }
 
     Column(modifier = modifier.padding(20.dp)) {
-        Text(
-            loan.title,
-            style = MaterialTheme.typography.titleSmall,
-            color = palette.content.copy(alpha = 0.8f),
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis
-        )
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                loan.title,
+                modifier = Modifier.weight(1f),
+                style = MaterialTheme.typography.titleSmall,
+                color = palette.content.copy(alpha = 0.8f),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            planStatus(loan, paid)?.let {
+                PlanPill(it, textColor = Color.White, background = Color.Black.copy(alpha = 0.25f))
+            }
+        }
         Spacer(Modifier.height(4.dp))
         Text(
             formatMoney(shownBalance.value.toDouble()),

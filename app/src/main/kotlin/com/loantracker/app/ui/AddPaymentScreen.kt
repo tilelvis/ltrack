@@ -8,6 +8,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -36,7 +37,12 @@ fun AddPaymentScreen(
     var date by remember { mutableStateOf(LocalDate.now()) }
     var showDatePicker by remember { mutableStateOf(false) }
 
-    val amountValid = amount.trim().toDoubleOrNull()?.let { it > 0 } ?: false
+    val loan by vm.loan(loanId).collectAsStateWithLifecycle()
+    val totalPaid by vm.totalPaid(loanId).collectAsStateWithLifecycle()
+    val balance = ((loan?.totalPayable ?: 0.0) - totalPaid).coerceAtLeast(0.0)
+    val amountValue = amount.trim().toDoubleOrNull()
+    val overpay = loan != null && amountValue != null && amountValue > balance + 0.5
+    val amountValid = (amountValue ?: 0.0) > 0 && !overpay
 
     Scaffold(
         topBar = {
@@ -64,10 +70,20 @@ fun AddPaymentScreen(
                 value = amount,
                 onValueChange = { amount = it.filter { ch -> ch.isDigit() || ch == '.' } },
                 label = { Text("Amount (KSh) *") },
+                isError = overpay,
+                supportingText = {
+                    if (overpay) Text("That’s more than you owe. ${formatMoneyDetail(balance)} is left on this loan.")
+                },
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                 modifier = Modifier.fillMaxWidth()
             )
+
+            if (balance > 0.0) {
+                TextButton(onClick = {
+                    amount = if (balance % 1.0 == 0.0) balance.toLong().toString() else "%.2f".format(balance)
+                }) { Text("Pay the remainder · ${formatMoneyDetail(balance)}") }
+            }
 
             Text(
                 "Date",

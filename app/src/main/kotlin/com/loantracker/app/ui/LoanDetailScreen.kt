@@ -10,6 +10,10 @@ import androidx.compose.material.icons.automirrored.filled.Message
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Call
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.PictureAsPdf
 import androidx.compose.material.icons.filled.QrCode
@@ -57,6 +61,8 @@ fun LoanDetailScreen(
     val lastPaid = remember(payments) { payments.lastPaidDateByLoan().values.firstOrNull() }
 
     var showDeleteLoanDialog by remember { mutableStateOf(false) }
+    var showEditDialog by remember { mutableStateOf(false) }
+    var menuOpen by remember { mutableStateOf(false) }
     val deletePaymentTarget = remember { mutableStateOf<Payment?>(null) }
 
     Scaffold(
@@ -82,8 +88,39 @@ fun LoanDetailScreen(
                     }) {
                         Icon(Icons.Filled.PictureAsPdf, contentDescription = "PDF report")
                     }
-                    IconButton(onClick = { showDeleteLoanDialog = true }) {
-                        Icon(Icons.Filled.Delete, contentDescription = "Delete loan")
+                    Box {
+                        IconButton(onClick = { menuOpen = true }) {
+                            Icon(Icons.Filled.MoreVert, contentDescription = "More")
+                        }
+                        DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                            DropdownMenuItem(
+                                text = { Text("Edit loan") },
+                                leadingIcon = { Icon(Icons.Filled.Edit, contentDescription = null) },
+                                onClick = { menuOpen = false; showEditDialog = true }
+                            )
+                            val hidden = loan?.isHidden == true
+                            DropdownMenuItem(
+                                text = { Text(if (hidden) "Unhide loan" else "Hide from dashboard") },
+                                leadingIcon = {
+                                    Icon(
+                                        if (hidden) Icons.Filled.Visibility else Icons.Filled.VisibilityOff,
+                                        contentDescription = null
+                                    )
+                                },
+                                onClick = {
+                                    menuOpen = false
+                                    loan?.let { vm.hideLoan(it.id, !hidden) }
+                                    if (!hidden) onBack()
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Delete loan", color = MaterialTheme.colorScheme.error) },
+                                leadingIcon = {
+                                    Icon(Icons.Filled.Delete, contentDescription = null, tint = MaterialTheme.colorScheme.error)
+                                },
+                                onClick = { menuOpen = false; showDeleteLoanDialog = true }
+                            )
+                        }
                     }
                 }
             )
@@ -168,6 +205,16 @@ fun LoanDetailScreen(
                     )
                 }
             }
+        }
+    }
+
+    if (showEditDialog) {
+        loan?.let { current ->
+            EditLoanDialog(
+                loan = current,
+                onSave = { vm.updateLoan(it); showEditDialog = false },
+                onDismiss = { showEditDialog = false }
+            )
         }
     }
 
@@ -273,6 +320,22 @@ private fun HeroDetailCard(
                         days <= 0 -> MaterialTheme.colorScheme.error
                         else -> MaterialTheme.colorScheme.onPrimaryContainer
                     }
+                )
+            }
+            Spacer(Modifier.height(8.dp))
+            Text(
+                "Interest ${formatMoneyDetail(loan.totalPayable - loan.principal)} on top of " +
+                    "${formatMoneyDetail(loan.principal)} borrowed · ${loan.interestRate.let { if (it % 1.0 == 0.0) it.toInt().toString() else it.toString() }}% flat",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
+            )
+            planStatus(loan, totalPaid)?.let {
+                Spacer(Modifier.height(8.dp))
+                PlanPill(
+                    it,
+                    textColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                    background = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.12f),
+                    long = true
                 )
             }
             Spacer(Modifier.height(8.dp))

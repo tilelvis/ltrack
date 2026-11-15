@@ -40,6 +40,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.loantracker.app.LoanWidgetProvider
 import com.loantracker.app.data.Loan
 import com.loantracker.app.data.Payment
+import com.loantracker.app.services.ReminderScheduler
 import com.loantracker.app.data.Severity
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -82,6 +83,10 @@ fun DashboardScreen(
     }
     val (currentStreak, bestStreak) = computeStreak(allPayments)
 
+    // Arm the 8 am and 5 pm reminders as soon as there is an active loan (e.g. right after adding one).
+    LaunchedEffect(activeLoans.size) {
+        if (activeLoans.isNotEmpty()) ReminderScheduler.ensureScheduled(appContext)
+    }
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
     // True once the full loan card has mostly scrolled out of view; the top-bar chip stands in for it.

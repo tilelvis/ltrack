@@ -42,6 +42,7 @@ class LoanRepository(private val db: AppDatabase) {
     fun observeTodayPayment(loanId: String): Flow<Payment?> = db.paymentDao().observeTodayPayment(loanId)
 
     suspend fun upsertLoan(loan: Loan) = db.loanDao().upsert(loan)
+    suspend fun updateLoan(loan: Loan) = db.loanDao().update(loan)
     suspend fun deleteLoan(loan: Loan) = db.loanDao().delete(loan)
     suspend fun setLoanHidden(id: String, hidden: Boolean) = db.loanDao().setHidden(id, hidden)
     suspend fun addPayment(payment: Payment) = db.paymentDao().insert(payment)

@@ -113,6 +113,30 @@ fun SettingsScreen(
             UpdateSettingsCard(UpdateController.get(context))
 
             Text(
+                "Reminders",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.padding(top = 8.dp, bottom = 4.dp)
+            )
+            RemindersSettingsCard()
+
+            Text(
+                "Late fee",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.padding(top = 8.dp, bottom = 4.dp)
+            )
+            PenaltySettingsCard()
+
+            Text(
+                "Backup",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.padding(top = 8.dp, bottom = 4.dp)
+            )
+            BackupSettingsCard()
+
+            Text(
                 "About",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
