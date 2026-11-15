@@ -132,7 +132,7 @@ fun DashboardScreen(
                             MiniLoanChip(
                                 loan = loan,
                                 paid = selectedPaid,
-                                paletteIndex = frontIndex,
+                                paletteIndex = paletteIndexFor(loan),
                                 onClick = { scope.launch { listState.animateScrollToItem(0) } }
                             )
                         }

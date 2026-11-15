@@ -22,6 +22,17 @@ import androidx.compose.material.icons.filled.Sms
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.draw.clip
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.background
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.Animatable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
@@ -49,6 +60,7 @@ fun LoanDetailScreen(
     vm: LoanViewModel,
     onBack: () -> Unit,
     onAddPayment: (String) -> Unit,
+    onPayNow: (String, Double) -> Unit,
     onMpesaImport: (String) -> Unit,
     onSmsScan: (String) -> Unit
 ) {
@@ -66,6 +78,8 @@ fun LoanDetailScreen(
     val deletePaymentTarget = remember { mutableStateOf<Payment?>(null) }
 
     Scaffold(
+        modifier = Modifier.appBackdrop(),
+        containerColor = Color.Transparent,
         topBar = {
             TopAppBar(
                 colors = appBarColors(),
@@ -125,13 +139,16 @@ fun LoanDetailScreen(
                 }
             )
         },
-        floatingActionButton = {
-            if (!repaid) FloatingActionButton(
-                onClick = { onAddPayment(loanId) },
-                containerColor = MaterialTheme.colorScheme.tertiary,
-                contentColor = MaterialTheme.colorScheme.onTertiary
-            ) {
-                Icon(Icons.Filled.Add, contentDescription = "Add payment")
+        bottomBar = {
+            if (!repaid) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .navigationBarsPadding()
+                        .padding(horizontal = 16.dp, vertical = 10.dp)
+                ) {
+                    GradientActionButton("Add payment") { onAddPayment(loanId) }
+                }
             }
         }
     ) { padding ->
@@ -154,7 +171,7 @@ fun LoanDetailScreen(
                 .padding(padding)
                 .padding(horizontal = 16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
-            contentPadding = PaddingValues(top = 16.dp, bottom = 96.dp)
+            contentPadding = PaddingValues(top = 16.dp, bottom = 16.dp)
         ) {
             item {
                 HeroDetailCard(
@@ -166,7 +183,7 @@ fun LoanDetailScreen(
             }
 
             recommendation?.takeIf { it.severity != Severity.PAID }?.let { rec ->
-                item { DetailRecommendationCard(rec) }
+                item { DetailRecommendationCard(rec, onClick = { onPayNow(loanId, rec.dailyAmount) }) }
             }
 
             val lenderIsTitle = l.lenderName.equals(l.title, ignoreCase = true)
@@ -189,7 +206,7 @@ fun LoanDetailScreen(
             if (payments.isEmpty()) {
                 item {
                     Text(
-                        "No payments yet. Tap + to record one.",
+                        "No payments yet. Tap Add payment to record one.",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -265,116 +282,174 @@ private fun HeroDetailCard(
     repaid: Boolean,
     lastPaid: java.time.LocalDate?
 ) {
+    val palette = loanCardPalette(paletteIndexFor(loan))
     val balance = (loan.totalPayable - totalPaid).coerceAtLeast(0.0)
     val progress = if (loan.totalPayable > 0) {
         (totalPaid / loan.totalPayable).coerceIn(0.0, 1.0).toFloat()
     } else 0f
     val percent = (progress * 100).toInt()
     val days = loan.daysRemaining
+    val rate = loan.interestRate.let { if (it % 1.0 == 0.0) it.toInt().toString() else it.toString() }
+    val lender = loan.lenderName?.takeIf { it.isNotBlank() && !it.equals(loan.title, ignoreCase = true) }
+
+    val shownBalance = remember { Animatable(0f) }
+    val shownProgress = remember { Animatable(0f) }
+    LaunchedEffect(balance) { shownBalance.animateTo(balance.toFloat(), tween(800)) }
+    LaunchedEffect(progress) { shownProgress.animateTo(progress, tween(900)) }
 
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.primaryContainer
-        )
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.Transparent),
+        elevation = CardDefaults.cardElevation(defaultElevation = 10.dp),
+        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.18f))
     ) {
-        Column(modifier = Modifier.padding(20.dp)) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(palette.brush)
+                .padding(20.dp)
+        ) {
             Text(
-                "Outstanding balance",
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.75f)
+                listOfNotNull(lender, "$rate% flat").joinToString(" · "),
+                fontSize = 13.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = Color.White.copy(alpha = 0.9f)
             )
             Spacer(Modifier.height(4.dp))
             Text(
-                formatMoneyDetail(balance),
-                fontSize = 32.sp,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onPrimaryContainer
+                formatMoneyDetail(shownBalance.value.toDouble()),
+                fontSize = 40.sp,
+                fontWeight = FontWeight.ExtraBold,
+                color = Color.White
             )
-            Spacer(Modifier.height(12.dp))
-            LinearProgressIndicator(
-                progress = { progress },
+            Text(
+                "of ${formatMoneyDetail(loan.totalPayable)} · due ${loan.dueDate.format(DATE_FMT)}",
+                fontSize = 14.sp,
+                color = Color.White.copy(alpha = 0.9f)
+            )
+            Spacer(Modifier.height(14.dp))
+            Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(8.dp),
-                color = MaterialTheme.colorScheme.primary,
-                trackColor = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.15f)
-            )
-            Spacer(Modifier.height(8.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
+                    .height(8.dp)
+                    .clip(CircleShape)
+                    .background(Color.White.copy(alpha = 0.25f))
             ) {
-                Text(
-                    "Paid ${formatMoneyDetail(totalPaid)} of ${formatMoneyDetail(loan.totalPayable)}",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer
-                )
-                Text(
-                    if (repaid) "Repaid" else "$percent% • ${daysLeftText(days)}",
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    color = when {
-                        repaid -> toneColors(Tone.SUCCESS).fg
-                        days <= 0 -> MaterialTheme.colorScheme.error
-                        else -> MaterialTheme.colorScheme.onPrimaryContainer
-                    }
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth(shownProgress.value.coerceIn(0f, 1f))
+                        .fillMaxHeight()
+                        .clip(CircleShape)
+                        .background(palette.accent)
                 )
             }
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(10.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    if (repaid) "Repaid" else "$percent% repaid · ${daysLeftText(days)}",
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color.White
+                )
+                val (label, bg, fg) = statusChip(repaid, days)
+                Text(
+                    label,
+                    modifier = Modifier.clip(CircleShape).background(bg).padding(horizontal = 12.dp, vertical = 4.dp),
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = fg
+                )
+            }
+            Spacer(Modifier.height(10.dp))
             Text(
                 "Interest ${formatMoneyDetail(loan.totalPayable - loan.principal)} on top of " +
-                    "${formatMoneyDetail(loan.principal)} borrowed · ${loan.interestRate.let { if (it % 1.0 == 0.0) it.toInt().toString() else it.toString() }}% flat",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
+                    "${formatMoneyDetail(loan.principal)} borrowed",
+                fontSize = 12.sp,
+                color = Color.White.copy(alpha = 0.88f)
             )
             planStatus(loan, totalPaid)?.let {
                 Spacer(Modifier.height(8.dp))
-                PlanPill(
-                    it,
-                    textColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                    background = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.12f),
-                    long = true
-                )
+                PlanPill(it, textColor = Color.White, background = Color.Black.copy(alpha = 0.25f), long = true)
             }
-            Spacer(Modifier.height(8.dp))
             if (repaid) {
-                RepaidNote(repaymentNote(loan.dueDate, lastPaid))
-            } else {
-                Text(
-                    "Due ${loan.dueDate.format(DATE_FMT)}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
-                )
+                Spacer(Modifier.height(10.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Filled.CheckCircle, contentDescription = null, tint = GoldAccent, modifier = Modifier.size(16.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text(
+                        repaymentNote(loan.dueDate, lastPaid),
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color.White
+                    )
+                }
             }
         }
     }
 }
 
+/** Label plus soft chip colours that stay readable on any of the card gradients. */
+private fun statusChip(repaid: Boolean, days: Long): Triple<String, Color, Color> = when {
+    repaid -> Triple("Repaid", Color(0xFFDDEEE3), Color(0xFF1F6B4A))
+    days <= 0 -> Triple("Overdue", Color(0xFFF8E1DE), Color(0xFFA8322A))
+    days <= 2 -> Triple("Critical", Color(0xFFF8E1DE), Color(0xFFA8322A))
+    days <= 5 -> Triple("Elevated", Color(0xFFF9E6D9), Color(0xFFA8480F))
+    days <= 10 -> Triple("Moderate", Color(0xFFF8EBD0), Color(0xFF8A5A0B))
+    else -> Triple("On track", Color(0xFFDDEEE3), Color(0xFF1F6B4A))
+}
+
+private val ActionGradient: Brush
+    get() = Brush.horizontalGradient(listOf(Color(0xFFD9461A), Color(0xFFFF6A3D)))
+
 @Composable
-private fun DetailRecommendationCard(rec: com.loantracker.app.data.DailyPaymentRecommendation) {
-    val color = severityColor(rec.severity)
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = severityContainer(rec.severity))
+private fun DetailRecommendationCard(
+    rec: com.loantracker.app.data.DailyPaymentRecommendation,
+    onClick: () -> Unit
+) {
+    val shape = RoundedCornerShape(20.dp)
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .shadow(8.dp, shape)
+            .clip(shape)
+            .background(ActionGradient)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 18.dp, vertical = 16.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
+        Column(modifier = Modifier.weight(1f)) {
             Text(
-                if (rec.severity == Severity.PAID) "Loan repaid!"
-                else "Pay ${formatMoneyDetail(rec.dailyAmount)} today",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = color
+                "Pay ${formatMoneyDetail(rec.dailyAmount)} today",
+                fontSize = 22.sp,
+                fontWeight = FontWeight.ExtraBold,
+                color = Color.White
             )
             Spacer(Modifier.height(2.dp))
-            Text(
-                rec.message,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurface
-            )
+            Text(rec.message, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = Color.White.copy(alpha = 0.95f))
         }
+        Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = "Pay now", tint = Color.White)
+    }
+}
+
+@Composable
+private fun GradientActionButton(text: String, onClick: () -> Unit) {
+    val shape = RoundedCornerShape(18.dp)
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(54.dp)
+            .shadow(10.dp, shape, ambientColor = Color(0xFFD9461A), spotColor = Color(0xFFD9461A))
+            .clip(shape)
+            .background(ActionGradient)
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(text, fontSize = 17.sp, fontWeight = FontWeight.ExtraBold, color = Color.White)
     }
 }
 
@@ -477,7 +552,7 @@ private fun PaymentRow(
                     formatMoneyDetail(payment.amount),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary
+                    color = MaterialTheme.colorScheme.onSurface
                 )
                 Text(
                     payment.paidAt.format(DATETIME_FMT) + "  ·  " +

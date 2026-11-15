@@ -71,6 +71,9 @@ private fun gradientPalette(a: Long, b: Long, accent: Long) =
         accent = Color(accent)
     )
 
+/** A loan keeps the same colour everywhere (card, chip, detail page), whatever its position in the list. */
+fun paletteIndexFor(loan: com.loantracker.app.data.Loan): Int = (loan.id.hashCode() and 0x7fffffff) % 4
+
 @Composable
 fun loanCardPalette(index: Int): CardPalette {
     val dark = isDarkTheme()
@@ -127,7 +130,7 @@ fun LoanCardStack(
                 StackCard(
                     loan = loan,
                     paid = paidByLoan[loan.id] ?: 0.0,
-                    palette = loanCardPalette(idx),
+                    palette = loanCardPalette(paletteIndexFor(loan)),
                     depth = depth,
                     position = frontIndex,
                     total = n,

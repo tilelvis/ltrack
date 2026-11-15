@@ -216,6 +216,7 @@ private fun AppNav() {
                     vm = vm,
                     onBack = { nav.popBackStack() },
                     onAddPayment = { id -> nav.navigate("addPayment/$id") },
+                    onPayNow = { id, amount -> nav.navigate("addPayment/$id?amount=${amount.toLong()}") },
                     onMpesaImport = { id -> nav.navigate("mpesaImport/$id") },
                     onSmsScan = { id -> nav.navigate("smsScan/$id") }
                 )
