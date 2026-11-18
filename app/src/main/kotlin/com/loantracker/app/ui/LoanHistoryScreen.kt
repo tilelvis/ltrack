@@ -278,7 +278,7 @@ private fun SummaryCard(
             Text(
                 count.toString(),
                 style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
+                fontWeight = FontWeight.SemiBold,
                 color = color,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis

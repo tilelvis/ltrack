@@ -24,6 +24,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -58,9 +60,6 @@ import com.loantracker.app.services.UpdateController
 import com.loantracker.app.services.UpdateController.State
 import com.loantracker.app.services.UpdateController.UpdateInfo
 
-private val BtnStart = Color(0xFFD9461A)
-private val BtnEnd = Color(0xFFFF6A3D)
-private val HeroGoldSoft = Color(0xFFFFE08A)
 
 /**
  * One persistent update card for the whole flow. The hero illustration and layout stay put while
@@ -82,7 +81,6 @@ fun UpdateCardDialog(
         else -> 0f
     }
     val progress by animateFloatAsState(rawProgress, tween(250), label = "dl")
-    val ring by animateFloatAsState(if (downloading || ready) rawProgress else 0.82f, tween(250), label = "ring")
     val title = when {
         failed != null -> "Update problem"
         ready -> "Ready to install"
@@ -101,34 +99,26 @@ fun UpdateCardDialog(
     ) {
         Card(
             modifier = Modifier.padding(horizontal = 20.dp).widthIn(max = 400.dp).fillMaxWidth(),
-            shape = RoundedCornerShape(28.dp),
-            colors = CardDefaults.cardColors(containerColor = if (isDarkTheme()) Color(0xFF16201B) else Color.White),
-            elevation = CardDefaults.cardElevation(defaultElevation = 16.dp)
+            shape = RoundedCornerShape(20.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
+            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+            border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f))
         ) {
             Column {
-                Box(modifier = Modifier.fillMaxWidth().height(190.dp)) {
-                    UpdateHero(ring, ready, Modifier.matchParentSize())
-                    Column(
-                        modifier = Modifier
-                            .align(Alignment.BottomStart)
-                            .fillMaxWidth(0.62f)
-                            .padding(start = 18.dp, bottom = 14.dp)
-                    ) {
-                        Text(title, fontSize = 22.sp, fontWeight = FontWeight.ExtraBold, color = Color.White)
-                        Text(
-                            "v${info.version}" + (if (sizeMb > 0) " · %.1f MB".format(sizeMb) else "") +
-                                " · you have v${controller.currentVersion}",
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = Color.White
-                        )
-                    }
+                Column(modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 20.dp)) {
+                    Text(title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
+                    Text(
+                        "v${info.version}" + (if (sizeMb > 0) " · %.1f MB".format(sizeMb) else "") +
+                            " · you have v${controller.currentVersion}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
-                Column(modifier = Modifier.padding(start = 18.dp, end = 18.dp, top = 16.dp, bottom = 12.dp)) {
+                Column(modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 16.dp, bottom = 16.dp)) {
                     if (failed != null) {
                         Text(failed.message, style = MaterialTheme.typography.bodyMedium)
                     } else {
-                        Text("What’s new", fontSize = 13.sp, fontWeight = FontWeight.ExtraBold)
+                        Text("What’s new", fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
                         Spacer(Modifier.height(6.dp))
                         val (lines, more) = changelog(info.notes)
                         lines.forEach { Bullet(it) }
@@ -158,7 +148,7 @@ fun UpdateCardDialog(
                             }
                         }
                         else -> {
-                            UpdateButton("↓ Update now", null) { controller.startDownload(info) }
+                            UpdateButton("Update now", null) { controller.startDownload(info) }
                             CenterActions {
                                 TextButton(contentPadding = PaddingValues(8.dp), onClick = { controller.dismiss() }) { Tiny("Later") }
                                 TextButton(contentPadding = PaddingValues(8.dp), onClick = { controller.skip(info) }) { Tiny("Skip this version") }
@@ -213,13 +203,13 @@ private fun ProgressBlock(progress: Float, ready: Boolean, sizeMb: Double) {
             Text(
                 if (ready) "Downloaded · 100%" else "Downloading · $pct%",
                 fontSize = 12.sp,
-                fontWeight = FontWeight.Bold
+                fontWeight = FontWeight.SemiBold
             )
             if (sizeMb > 0) {
                 Text(
                     "%.1f of %.1f MB".format(sizeMb * progress, sizeMb),
                     fontSize = 12.sp,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.SemiBold
                 )
             }
         }
@@ -229,13 +219,13 @@ private fun ProgressBlock(progress: Float, ready: Boolean, sizeMb: Double) {
                 .fillMaxWidth()
                 .height(6.dp)
                 .clip(RoundedCornerShape(6.dp))
-                .background(if (isDarkTheme()) Color(0xFF26332C) else Color(0xFFDDD8CB))
+                .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.10f))
         ) {
             Box(
                 modifier = Modifier
                     .fillMaxWidth(progress.coerceIn(0f, 1f))
                     .fillMaxHeight()
-                    .background(Brush.horizontalGradient(listOf(BtnStart, Color(0xFFFF9A4A))))
+                    .background(MaterialTheme.colorScheme.primary)
             )
         }
     }
@@ -243,111 +233,15 @@ private fun ProgressBlock(progress: Float, ready: Boolean, sizeMb: Double) {
 
 @Composable
 private fun UpdateButton(text: String, icon: ImageVector?, onClick: () -> Unit) {
-    val shape = RoundedCornerShape(18.dp)
-    val sheen by rememberInfiniteTransition(label = "sheen").animateFloat(
-        initialValue = 0f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(tween(2400, easing = LinearEasing), RepeatMode.Restart),
-        label = "sheenX"
-    )
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(54.dp)
-            .shadow(12.dp, shape, ambientColor = BtnStart, spotColor = BtnStart)
-            .clip(shape)
-            .background(Brush.horizontalGradient(listOf(BtnStart, BtnEnd)))
-            .drawWithContent {
-                drawContent()
-                val x = size.width * (sheen * 1.6f - 0.3f)
-                drawRect(
-                    Brush.linearGradient(
-                        listOf(Color.Transparent, Color.White.copy(alpha = 0.28f), Color.Transparent),
-                        start = Offset(x, 0f),
-                        end = Offset(x + size.width * 0.3f, size.height)
-                    )
-                )
-            }
-            .clickable(onClick = onClick),
-        horizontalArrangement = Arrangement.Center,
-        verticalAlignment = Alignment.CenterVertically
+    Button(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth().height(52.dp),
+        shape = RoundedCornerShape(12.dp),
+        colors = ButtonDefaults.buttonColors(
+            containerColor = MaterialTheme.colorScheme.primary,
+            contentColor = MaterialTheme.colorScheme.onPrimary
+        )
     ) {
-        if (icon != null) {
-            Icon(icon, contentDescription = null, tint = Color.White, modifier = Modifier.size(22.dp))
-            Spacer(Modifier.size(8.dp))
-        }
-        Text(text, fontSize = 17.sp, fontWeight = FontWeight.ExtraBold, color = Color.White)
-    }
-}
-
-/** Loan-repayment illustration: rising bars, a repayment ring that fills with the download, coins. */
-@Composable
-private fun UpdateHero(ringProgress: Float, done: Boolean, modifier: Modifier = Modifier) {
-    val measurer = rememberTextMeasurer()
-    val label = if (done) "✓" else "KSh"
-    Canvas(modifier = modifier) {
-        val w = size.width
-        val h = size.height
-        drawRect(
-            Brush.linearGradient(
-                0f to Color(0xFF052E21), 0.55f to Color(0xFF0B6B4B), 1f to Color(0xFF159A6E),
-                start = Offset.Zero,
-                end = Offset(w, h)
-            )
-        )
-        drawRect(
-            Brush.radialGradient(
-                listOf(Color(0xFFFF6A3D).copy(alpha = 0.6f), Color.Transparent),
-                center = Offset(w * 0.85f, h),
-                radius = w * 0.7f
-            )
-        )
-        listOf(50f, 70f, 92f, 116f).forEachIndexed { i, bh ->
-            drawRoundRect(
-                Color.White.copy(alpha = 0.14f),
-                topLeft = Offset(20.dp.toPx() + i * 34.dp.toPx(), h - 20.dp.toPx() - bh.dp.toPx()),
-                size = Size(26.dp.toPx(), bh.dp.toPx()),
-                cornerRadius = CornerRadius(6.dp.toPx())
-            )
-        }
-        val c = Offset(w * 0.75f, h * 0.37f)
-        val r = 40.dp.toPx()
-        val sw = 9.dp.toPx()
-        drawCircle(Color.White.copy(alpha = 0.22f), r, c, style = Stroke(sw))
-        drawArc(
-            brush = Brush.linearGradient(
-                listOf(Color(0xFFFF7A4D), HeroGoldSoft),
-                start = Offset(c.x - r, c.y - r),
-                end = Offset(c.x + r, c.y + r)
-            ),
-            startAngle = -90f,
-            sweepAngle = 360f * ringProgress.coerceIn(0f, 1f),
-            useCenter = false,
-            topLeft = Offset(c.x - r, c.y - r),
-            size = Size(2 * r, 2 * r),
-            style = Stroke(sw, cap = StrokeCap.Round)
-        )
-        val text = measurer.measure(
-            label,
-            TextStyle(fontSize = if (done) 30.sp else 18.sp, fontWeight = FontWeight.ExtraBold, color = Color.White)
-        )
-        drawText(text, topLeft = Offset(c.x - text.size.width / 2f, c.y - text.size.height / 2f))
-
-        val cx = w * 0.83f
-        val cw = 30.dp.toPx()
-        val ch = 9.dp.toPx()
-        listOf(
-            Color(0xFFC98A12) to 0f, Color(0xFFFFC24B) to -7f,
-            Color(0xFFC98A12) to -14f, Color(0xFFFFD36E) to -21f
-        ).forEach { (col, dy) ->
-            drawOval(col, Offset(cx - cw, h - 26.dp.toPx() - ch + dy.dp.toPx()), Size(cw * 2, ch * 2))
-        }
-        listOf(
-            Triple(0.55f, 0.16f, HeroGoldSoft), Triple(0.94f, 0.14f, HeroGoldSoft),
-            Triple(0.59f, 0.63f, HeroGoldSoft), Triple(0.63f, 0.30f, Color(0xFFFF8A5B)),
-            Triple(0.94f, 0.62f, Color(0xFFFF8A5B)), Triple(0.50f, 0.50f, Color(0xFFFF8A5B))
-        ).forEach { (fx, fy, col) -> drawCircle(col, 3.dp.toPx(), Offset(w * fx, h * fy)) }
-
-        drawRect(Brush.verticalGradient(0.4f to Color.Transparent, 1f to Color.Black.copy(alpha = 0.65f)))
+        Text(text, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
     }
 }

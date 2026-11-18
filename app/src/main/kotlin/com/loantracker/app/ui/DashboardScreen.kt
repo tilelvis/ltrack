@@ -146,7 +146,7 @@ fun DashboardScreen(
                 onClick = onAddLoan,
                 containerColor = MaterialTheme.colorScheme.tertiary,
                 contentColor = MaterialTheme.colorScheme.onTertiary,
-                elevation = FloatingActionButtonDefaults.elevation(defaultElevation = 8.dp)
+                elevation = FloatingActionButtonDefaults.elevation(0.dp, 0.dp, 0.dp, 0.dp)
             ) {
                 Icon(Icons.Filled.Add, contentDescription = "Add loan")
             }
@@ -184,7 +184,7 @@ fun DashboardScreen(
                 .padding(padding)
                 .padding(horizontal = 16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
-            contentPadding = PaddingValues(vertical = 16.dp)
+            contentPadding = PaddingValues(top = 16.dp, bottom = 96.dp)
         ) {
             if (selected != null) {
                 item(key = "loan_stack") {
@@ -281,7 +281,7 @@ private fun AllClearCard(completedCount: Int, onAddLoan: () -> Unit) {
             Text(
                 "You're all clear",
                 style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
+                fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.onPrimaryContainer
             )
             Text(
@@ -318,7 +318,7 @@ private fun WinsCard(count: Int, totalRepaid: Double) {
                 Text(
                     "$count ${if (count == 1) "loan" else "loans"} cleared",
                     style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
+                    fontWeight = FontWeight.SemiBold,
                     color = tone.fg
                 )
                 Text(
@@ -380,7 +380,7 @@ private fun StreakCard(currentStreak: Int, bestStreak: Int) {
             Icon(
                 Icons.Filled.LocalFireDepartment,
                 contentDescription = null,
-                tint = toneColors(Tone.ELEVATED).fg,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.size(32.dp)
             )
             Spacer(Modifier.width(12.dp))
@@ -388,7 +388,7 @@ private fun StreakCard(currentStreak: Int, bestStreak: Int) {
                 Text(
                     "$currentStreak day streak",
                     style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.SemiBold
                 )
                 if (bestStreak > 0) {
                     Text(
@@ -445,7 +445,7 @@ private fun CompactLoanCard(
                 style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.SemiBold,
                 color = if (days <= 0) MaterialTheme.colorScheme.error
-                        else MaterialTheme.colorScheme.primary
+                        else MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
     }

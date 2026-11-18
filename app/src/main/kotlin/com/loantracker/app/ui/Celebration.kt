@@ -79,7 +79,7 @@ fun CelebrationDialog(celebration: Celebration, onDismiss: () -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
         confirmButton = {
-            Button(onClick = onDismiss) { Text("Awesome") }
+            Button(onClick = onDismiss) { Text("Done") }
         },
         text = {
             Column(
@@ -88,9 +88,9 @@ fun CelebrationDialog(celebration: Celebration, onDismiss: () -> Unit) {
             ) {
                 ConfettiTrophy()
                 Text(
-                    "Loan cleared!",
+                    "Loan cleared",
                     style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold,
+                    fontWeight = FontWeight.SemiBold,
                     textAlign = TextAlign.Center
                 )
                 Spacer(Modifier.height(4.dp))
@@ -115,7 +115,7 @@ fun CelebrationDialog(celebration: Celebration, onDismiss: () -> Unit) {
                         Text(
                             formatMoney(celebration.totalRepaid),
                             style = MaterialTheme.typography.headlineMedium,
-                            fontWeight = FontWeight.Bold,
+                            fontWeight = FontWeight.SemiBold,
                             color = MaterialTheme.colorScheme.onPrimaryContainer
                         )
                         Text(
@@ -142,7 +142,7 @@ fun CelebrationDialog(celebration: Celebration, onDismiss: () -> Unit) {
                 Text(
                     encouragement,
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.primary,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontWeight = FontWeight.Medium,
                     textAlign = TextAlign.Center
                 )

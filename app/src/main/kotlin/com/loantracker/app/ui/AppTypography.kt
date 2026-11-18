@@ -22,7 +22,8 @@ val AppFontFamily = FontFamily(
     Font(R.font.plus_jakarta_sans, FontWeight.ExtraBold, variationSettings = FontVariation.Settings(FontVariation.weight(800)))
 )
 
-private fun TextStyle.app(): TextStyle = copy(fontFamily = AppFontFamily)
+// "tnum": figures share one width so amounts line up and counters don't jitter.
+private fun TextStyle.app(): TextStyle = copy(fontFamily = AppFontFamily, fontFeatureSettings = "tnum")
 
 val AppTypography: Typography = Typography().let { t ->
     Typography(

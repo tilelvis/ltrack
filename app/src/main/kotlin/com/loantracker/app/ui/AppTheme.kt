@@ -27,57 +27,57 @@ import com.loantracker.app.data.Severity
  */
 fun loanTrackerColorScheme(dark: Boolean): ColorScheme =
     if (dark) darkColorScheme(
-        primary = Color(0xFF3EDC9C),
-        onPrimary = Color(0xFF06271A),
-        primaryContainer = Color(0xFF124A36),
-        onPrimaryContainer = Color(0xFFC9EEDA),
-        secondary = Color(0xFFB3CBBD),
-        onSecondary = Color(0xFF1E3329),
-        secondaryContainer = Color(0xFF33493D),
-        onSecondaryContainer = Color(0xFFD5E8DC),
+        primary = Color(0xFFFF7A4D),
+        onPrimary = Color(0xFF2A0E04),
+        primaryContainer = Color(0xFF262321),
+        onPrimaryContainer = Color(0xFFECE8E1),
+        secondary = Color(0xFFB5AFA5),
+        onSecondary = Color(0xFF1F1D1A),
+        secondaryContainer = Color(0xFF2E2B28),
+        onSecondaryContainer = Color(0xFFECE8E1),
         tertiary = Color(0xFFFF7A4D),
-        onTertiary = Color(0xFF3A1200),
-        tertiaryContainer = Color(0xFF5A2A14),
+        onTertiary = Color(0xFF2A0E04),
+        tertiaryContainer = Color(0xFF3A2219),
         onTertiaryContainer = Color(0xFFFFD9CB),
-        background = Color(0xFF0A100D),
-        onBackground = Color(0xFFE0E6E2),
-        surface = Color(0xFF0A100D),
-        onSurface = Color(0xFFE0E6E2),
-        surfaceVariant = Color(0xFF1E2923),
-        onSurfaceVariant = Color(0xFFB4C0B8),
-        outline = Color(0xFF85938A),
-        outlineVariant = Color(0xFF3B4841),
+        background = Color(0xFF131211),
+        onBackground = Color(0xFFECE8E1),
+        surface = Color(0xFF131211),
+        onSurface = Color(0xFFECE8E1),
+        surfaceVariant = Color(0xFF1D1B19),
+        onSurfaceVariant = Color(0xFFB5AFA5),
+        outline = Color(0xFF8A847A),
+        outlineVariant = Color(0xFF3A3632),
         error = Color(0xFFF0958B),
         onError = Color(0xFF4A0F0B),
         errorContainer = Color(0xFF6B2520),
         onErrorContainer = Color(0xFFFAD4D0),
-        surfaceDim = Color(0xFF0A100D),
-        surfaceBright = Color(0xFF2F3A33),
-        surfaceContainerLowest = Color(0xFF070B09),
-        surfaceContainerLow = Color(0xFF111915),
-        surfaceContainer = Color(0xFF16201B),
-        surfaceContainerHigh = Color(0xFF1E2923),
-        surfaceContainerHighest = Color(0xFF26332C)
+        surfaceDim = Color(0xFF131211),
+        surfaceBright = Color(0xFF302D2A),
+        surfaceContainerLowest = Color(0xFF0E0D0C),
+        surfaceContainerLow = Color(0xFF181715),
+        surfaceContainer = Color(0xFF1D1B19),
+        surfaceContainerHigh = Color(0xFF262321),
+        surfaceContainerHighest = Color(0xFF302D2A)
     ) else lightColorScheme(
-        primary = Color(0xFF0B6B4B),
+        primary = Color(0xFFC93C12),
         onPrimary = Color(0xFFFFFFFF),
-        primaryContainer = Color(0xFFD6F0E2),
-        onPrimaryContainer = Color(0xFF073D2B),
-        secondary = Color(0xFF4F6558),
+        primaryContainer = Color(0xFFEDE9DF),
+        onPrimaryContainer = Color(0xFF1C1B18),
+        secondary = Color(0xFF5E5A52),
         onSecondary = Color(0xFFFFFFFF),
-        secondaryContainer = Color(0xFFDCE9E0),
-        onSecondaryContainer = Color(0xFF1A2D23),
-        tertiary = Color(0xFFFF5A2C),
+        secondaryContainer = Color(0xFFEDE9DF),
+        onSecondaryContainer = Color(0xFF1C1B18),
+        tertiary = Color(0xFFC93C12),
         onTertiary = Color(0xFFFFFFFF),
-        tertiaryContainer = Color(0xFFFFE4D9),
+        tertiaryContainer = Color(0xFFF6E3DB),
         onTertiaryContainer = Color(0xFF4A1A08),
         background = Color(0xFFFAF8F3),
-        onBackground = Color(0xFF1C2420),
+        onBackground = Color(0xFF1C1B18),
         surface = Color(0xFFFAF8F3),
-        onSurface = Color(0xFF1C2420),
+        onSurface = Color(0xFF1C1B18),
         surfaceVariant = Color(0xFFF0ECE3),
-        onSurfaceVariant = Color(0xFF4E5650),
-        outline = Color(0xFF7A8A80),
+        onSurfaceVariant = Color(0xFF5A564E),
+        outline = Color(0xFF857F73),
         outlineVariant = Color(0xFFDDD8CB),
         error = Color(0xFFB3392F),
         onError = Color(0xFFFFFFFF),
@@ -99,7 +99,7 @@ fun loanTrackerColorScheme(dark: Boolean): ColorScheme =
  */
 @Composable
 fun accentTextColor(): Color =
-    if (isDarkTheme()) Color(0xFFFF9A73) else Color(0xFFC2410C)  // readable on the page background
+    if (isDarkTheme()) Color(0xFFFF9A73) else Color(0xFFC93C12)  // readable on the page background
 
 /** True when the active app theme is dark (works with the manual theme toggle). */
 @Composable
@@ -116,22 +116,9 @@ fun appBarColors(): TopAppBarColors = TopAppBarDefaults.topAppBarColors(
 /** Win / celebration gold. */
 val GoldAccent = Color(0xFFFFC24B)
 
-/** Hot coral gradient used for the primary call to action. */
-val CoralBrush: Brush
-    get() = Brush.linearGradient(listOf(Color(0xFFFF5A2C), Color(0xFFFF8A4A)))
-
-/** Page background plus soft emerald and coral glows so the surface has depth, not a flat fill. */
+/** Flat page background. Depth comes from surface steps and hairlines, not glows. */
 @Composable
-fun Modifier.appBackdrop(): Modifier {
-    val dark = isDarkTheme()
-    val base = MaterialTheme.colorScheme.background
-    val emerald = if (dark) Color(0xFF1FBF8A).copy(alpha = 0.20f) else Color(0xFF159A6E).copy(alpha = 0.10f)
-    val coral = if (dark) Color(0xFFFF6A3D).copy(alpha = 0.14f) else Color(0xFFFF5A2C).copy(alpha = 0.07f)
-    return this.background(base).drawBehind {
-        drawRect(Brush.radialGradient(listOf(emerald, Color.Transparent), Offset(size.width * 0.1f, 0f), size.width * 0.9f))
-        drawRect(Brush.radialGradient(listOf(coral, Color.Transparent), Offset(size.width, size.height * 0.85f), size.width * 0.8f))
-    }
-}
+fun Modifier.appBackdrop(): Modifier = this.background(MaterialTheme.colorScheme.background)
 
 enum class Tone { SUCCESS, CAUTION, ELEVATED, DANGER, NEUTRAL }
 
@@ -145,13 +132,13 @@ fun toneColors(tone: Tone): ToneColors {
         Tone.CAUTION -> ToneColors(Color(0xFFE6BE6A), Color(0xFF3A2F17))
         Tone.ELEVATED -> ToneColors(Color(0xFFF0A070), Color(0xFF3D2718))
         Tone.DANGER -> ToneColors(Color(0xFFF0958B), Color(0xFF3E2220))
-        Tone.NEUTRAL -> ToneColors(Color(0xFFA8B5AD), Color(0xFF26322B))
+        Tone.NEUTRAL -> ToneColors(Color(0xFFB5AFA5), Color(0xFF262321))
     } else when (tone) {
         Tone.SUCCESS -> ToneColors(Color(0xFF1F6B4A), Color(0xFFDDEEE3))
         Tone.CAUTION -> ToneColors(Color(0xFF8A5A0B), Color(0xFFF8EBD0))
         Tone.ELEVATED -> ToneColors(Color(0xFFA8480F), Color(0xFFF9E6D9))
         Tone.DANGER -> ToneColors(Color(0xFFA8322A), Color(0xFFF8E1DE))
-        Tone.NEUTRAL -> ToneColors(Color(0xFF55615A), Color(0xFFE6EBE7))
+        Tone.NEUTRAL -> ToneColors(Color(0xFF5A564E), Color(0xFFECE8DE))
     }
 }
 

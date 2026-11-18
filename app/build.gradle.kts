@@ -22,8 +22,8 @@ android {
         applicationId = "com.loantracker.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 25
-        versionName = "2.17.0"
+        versionCode = 26
+        versionName = "2.18.0"
 
         // GitHub repo that hosts the releases the app updates from. In GitHub Actions this is
         // picked up automatically from GITHUB_REPOSITORY (owner/repo); override with -PgithubRepo=...

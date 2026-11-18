@@ -240,7 +240,7 @@ fun AddLoanScreen(vm: LoanViewModel, onBack: () -> Unit) {
                     Text(
                         "$rate%",
                         style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold,
+                        fontWeight = FontWeight.SemiBold,
                         color = MaterialTheme.colorScheme.primary
                     )
                 }
@@ -401,7 +401,7 @@ fun AddLoanScreen(vm: LoanViewModel, onBack: () -> Unit) {
                         Text(
                             formatMoney(totalPayable),
                             style = MaterialTheme.typography.headlineMedium,
-                            fontWeight = FontWeight.Bold,
+                            fontWeight = FontWeight.SemiBold,
                             color = MaterialTheme.colorScheme.onPrimaryContainer
                         )
                         Spacer(Modifier.height(4.dp))

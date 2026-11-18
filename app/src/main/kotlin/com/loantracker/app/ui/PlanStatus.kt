@@ -3,6 +3,7 @@ package com.loantracker.app.ui
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -38,13 +39,11 @@ fun planStatus(loan: Loan, paid: Double, today: LocalDate = LocalDate.now()): Pl
 
 @Composable
 fun PlanPill(status: PlanStatus, textColor: Color, background: Color, long: Boolean = false) {
-    val arrow = when (status.direction) { 1 -> "▲ "; -1 -> "▼ "; else -> "● " }
+    val tone = when (status.direction) { 1 -> Tone.SUCCESS; -1 -> Tone.CAUTION; else -> Tone.NEUTRAL }
     Text(
-        arrow + if (long) status.long else status.short,
-        modifier = Modifier.clip(CircleShape).background(background).padding(horizontal = 10.dp, vertical = 3.dp),
-        fontSize = 12.sp,
-        fontWeight = FontWeight.SemiBold,
-        color = if (status.direction < 0) Color(0xFFFFD27A).takeIf { textColor == Color.White } ?: textColor else textColor,
+        if (long) status.long else status.short,
+        style = MaterialTheme.typography.labelMedium,
+        color = toneColors(tone).fg,
         maxLines = 1
     )
 }

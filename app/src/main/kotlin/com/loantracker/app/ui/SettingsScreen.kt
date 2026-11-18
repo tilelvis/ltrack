@@ -153,7 +153,7 @@ fun SettingsScreen(
                     Text(
                         "Loan Tracker",
                         style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold,
+                        fontWeight = FontWeight.SemiBold,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )

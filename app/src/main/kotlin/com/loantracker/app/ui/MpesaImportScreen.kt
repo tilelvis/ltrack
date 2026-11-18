@@ -162,7 +162,7 @@ fun MpesaImportScreen(
 
                 if (!dateInRange) {
                     WarningCard(
-                        text = "This message is from ${p.date.toLocalDate().format(DATE_FMT)} — " +
+                        text = "This message is from ${p.date.toLocalDate().format(DATE_FMT)}. " +
                             "outside this loan's period " +
                             "(${l.startDate.format(DATE_FMT)} to ${l.dueDate.format(DATE_FMT)}). " +
                             "It may belong to another loan.",

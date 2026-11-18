@@ -235,7 +235,7 @@ fun SmsScanScreen(
                                     Text(
                                         "All caught up",
                                         style = MaterialTheme.typography.titleMedium,
-                                        fontWeight = FontWeight.Bold,
+                                        fontWeight = FontWeight.SemiBold,
                                         color = tone.fg
                                     )
                                     Text(
@@ -375,9 +375,9 @@ private fun DetectionRow(
                     Text(
                         formatMoneyScan(mpesa.amount),
                         style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
+                        fontWeight = FontWeight.SemiBold,
                         color = if (imported) MaterialTheme.colorScheme.onSurfaceVariant
-                                else MaterialTheme.colorScheme.primary,
+                                else MaterialTheme.colorScheme.onSurface,
                         modifier = Modifier.weight(1f)
                     )
                     Text(

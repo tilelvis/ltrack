@@ -40,6 +40,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
@@ -60,33 +61,16 @@ import com.loantracker.app.data.Loan
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
-/** Gradient / text / accent colors for one loan card. Each loan keeps its own color. */
+/** Surface / text / accent colors for a loan card. Every loan shares one quiet surface. */
 data class CardPalette(val brush: Brush, val container: Color, val content: Color, val accent: Color)
 
-private fun gradientPalette(a: Long, b: Long, accent: Long) =
-    CardPalette(
-        brush = Brush.linearGradient(listOf(Color(a), Color(b))),
-        container = Color(b),
-        content = Color.White,
-        accent = Color(accent)
-    )
-
-/** A loan keeps the same colour everywhere (card, chip, detail page), whatever its position in the list. */
+/** Kept so callers can still ask for a per-loan index; the look no longer depends on it. */
 fun paletteIndexFor(loan: com.loantracker.app.data.Loan): Int = (loan.id.hashCode() and 0x7fffffff) % 4
 
 @Composable
 fun loanCardPalette(index: Int): CardPalette {
-    val dark = isDarkTheme()
-    return when (index % 4) {
-        0 -> if (dark) gradientPalette(0xFF0B5A40, 0xFF12805C, 0xFF9BF0C8)   // Emerald
-             else gradientPalette(0xFF0B6B4B, 0xFF159A6E, 0xFFB5F5D6)
-        1 -> if (dark) gradientPalette(0xFF0B4A70, 0xFF1F7FA8, 0xFFBFE9FF)   // Ocean
-             else gradientPalette(0xFF0B5C8A, 0xFF2A8FBD, 0xFFCDEEFF)
-        2 -> if (dark) gradientPalette(0xFFC23A17, 0xFFDE6A28, 0xFFFFE6A8)   // Sunset
-             else gradientPalette(0xFFD9411A, 0xFFE9702A, 0xFFFFE9B0)
-        else -> if (dark) gradientPalette(0xFF4A32B0, 0xFF6C48E0, 0xFFE4D9FF) // Orchid
-                else gradientPalette(0xFF5B3FD0, 0xFF7B58F0, 0xFFE9E0FF)
-    }
+    val cs = MaterialTheme.colorScheme
+    return CardPalette(SolidColor(cs.surfaceVariant), cs.surfaceVariant, cs.onSurface, cs.primary)
 }
 
 /**
@@ -247,8 +231,8 @@ private fun BoxScope.StackCard(
             .clickable(onClick = if (isFront) onOpen else onSelectSelf),
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(containerColor = palette.container),
-        elevation = CardDefaults.cardElevation(defaultElevation = if (isFront) 10.dp else 3.dp),
-        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.18f))
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f))
     ) {
         Box(modifier = Modifier.fillMaxSize().background(palette.brush)) {
             LoanCardFace(
@@ -306,14 +290,14 @@ private fun LoanCardFace(
                 overflow = TextOverflow.Ellipsis
             )
             planStatus(loan, paid)?.let {
-                PlanPill(it, textColor = Color.White, background = Color.Black.copy(alpha = 0.25f))
+                PlanPill(it, textColor = MaterialTheme.colorScheme.onSurface, background = Color.Transparent)
             }
         }
         Spacer(Modifier.height(4.dp))
         Text(
             formatMoney(shownBalance.value.toDouble()),
             fontSize = 36.sp,
-            fontWeight = FontWeight.ExtraBold,
+            fontWeight = FontWeight.SemiBold,
             color = palette.content
         )
         Text(

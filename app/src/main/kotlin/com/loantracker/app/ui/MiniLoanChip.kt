@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -31,8 +32,7 @@ import com.loantracker.app.data.Loan
 
 /**
  * Slim one-line stand-in for the front loan card: a progress ring plus the balance. It sits in the
- * top bar while the full card is scrolled out of view, shares the card's gradient so it reads as
- * the same loan, and scrolls back to the card when tapped.
+ * top bar while the full card is scrolled out of view, uses the same quiet surface as the card, and scrolls back to the card when tapped.
  */
 @Composable
 fun MiniLoanChip(
@@ -42,7 +42,8 @@ fun MiniLoanChip(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val palette = loanCardPalette(paletteIndex)
+    val track = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.15f)
+    val ringColor = MaterialTheme.colorScheme.primary
     val shape = RoundedCornerShape(50)
     val balance = (loan.totalPayable - paid).coerceAtLeast(0.0)
     val progress =
@@ -52,12 +53,11 @@ fun MiniLoanChip(
         modifier = modifier
             .padding(end = 12.dp)
             .widthIn(max = 150.dp)
-            .shadow(6.dp, shape)
             .clip(shape)
-            .background(palette.brush)
-            .border(BorderStroke(1.dp, Color.White.copy(alpha = 0.35f)), shape)
+            .background(MaterialTheme.colorScheme.surfaceVariant)
+            .border(BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.10f)), shape)
             .clickable(onClick = onClick)
-            .padding(start = 8.dp, end = 12.dp, top = 6.dp, bottom = 6.dp)
+            .padding(start = 8.dp, end = 12.dp, top = 4.dp, bottom = 4.dp)
             .semantics {
                 contentDescription = "${loan.title}, ${formatMoney(balance)} outstanding. Tap to show the loan card."
             },
@@ -68,17 +68,17 @@ fun MiniLoanChip(
             val sw = 2.5.dp.toPx()
             val inset = sw / 2
             val arc = Size(size.width - sw, size.height - sw)
-            drawArc(Color.White.copy(alpha = 0.3f), 0f, 360f, false, Offset(inset, inset), arc, style = Stroke(sw))
+            drawArc(track, 0f, 360f, false, Offset(inset, inset), arc, style = Stroke(sw))
             drawArc(
-                palette.accent, -90f, 360f * progress, false, Offset(inset, inset), arc,
+                ringColor, -90f, 360f * progress, false, Offset(inset, inset), arc,
                 style = Stroke(sw, cap = StrokeCap.Round)
             )
         }
         Text(
             formatMoney(balance),
             fontSize = 13.sp,
-            fontWeight = FontWeight.ExtraBold,
-            color = Color.White,
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.onSurface,
             maxLines = 1
         )
     }
